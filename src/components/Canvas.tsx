@@ -150,6 +150,27 @@ function MockHeader({ step, title }: { step: number; title: string }) {
 
 /* ── Step 2 モック：ラダー図解釈 ── */
 function MockInterpretationCard() {
+  const mockClarifications = [
+    {
+      id: "q1",
+      question: "R39001はタッチパネル上のHMIボタンですか？機体の物理スイッチですか？",
+      context: "搭乗/遠隔の切り替え操作場所によって制御フローの説明が変わります",
+      answer: "",
+    },
+    {
+      id: "q2",
+      question: "ステップ45・48の -500 オフセットは中立位置の補正ですか？ユニット固有のズレ補正ですか？",
+      context: "意味がわかると制御の意図を正確にコードコメントに反映できます",
+      answer: "",
+    },
+    {
+      id: "q3",
+      question: "DM9/DM10 への遠隔指令の通信方式（UDP/TCP等）を教えてください",
+      context: "通信断時の挙動説明に必要です",
+      answer: "",
+    },
+  ];
+
   const mockRungs = [
     { number: 1, page: 1, inputs: "X0 AND X1", output: "Y0 (OUT)", comment: "起動条件", warning: null },
     { number: 2, page: 1, inputs: "M100", output: "Y1 (SET)", comment: "モーター正転", warning: "M100は変換表に影響します" },
@@ -158,15 +179,39 @@ function MockInterpretationCard() {
 
   return (
     <div
-      className="flex flex-col rounded-2xl border-2 border-gray-200 bg-white w-[480px] opacity-60 select-none"
+      className="flex flex-col rounded-2xl border-2 border-gray-200 bg-white w-[480px] select-none"
       style={{ maxHeight: "calc(100vh - 80px)" }}
       onWheel={(e) => e.stopPropagation()}
     >
       <MockHeader step={2} title="ラダー図の解釈" />
-      <div className="p-4 space-y-3 overflow-y-auto">
-        <p className="text-xs text-gray-400 italic">
-          PDFをアップロードすると Claude がラダー図を解釈し、各ラングを編集できる形式で表示します。
-        </p>
+      <div className="p-4 space-y-4 overflow-y-auto">
+
+        {/* 確認事項セクション（モック） */}
+        <div className="border border-amber-200 rounded-xl overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border-b border-amber-200">
+            <span className="text-amber-500">⚠</span>
+            <span className="text-sm font-semibold text-amber-800">確認事項</span>
+            <span className="text-xs text-amber-600 ml-auto">0 / 3 回答済み</span>
+          </div>
+          <div className="divide-y divide-amber-100">
+            {mockClarifications.map((c, i) => (
+              <div key={c.id} className="p-3 space-y-2">
+                <p className="text-xs font-semibold text-gray-700">Q{i + 1}. {c.question}</p>
+                <p className="text-xs text-gray-400">{c.context}</p>
+                <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-300 bg-gray-50 min-h-[40px]">
+                  回答を入力...
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="px-3 py-2.5 bg-amber-50 border-t border-amber-200">
+            <div className="w-full py-2 bg-amber-200 text-amber-500 text-xs font-semibold rounded-lg text-center">
+              すべて回答してから更新
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-400 italic">↓ 確認事項に回答後、ラング解釈が更新されます</p>
         {mockRungs.map((r) => (
           <div key={r.number} className="border border-gray-100 rounded-xl p-3 space-y-2 bg-gray-50">
             <div className="flex items-center justify-between">
