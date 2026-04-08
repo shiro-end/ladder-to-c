@@ -197,9 +197,21 @@ function MockInterpretationCard() {
   ];
 
   const mockRungs = [
-    { number: 1, page: 1, inputs: "X0 AND X1", output: "Y0 (OUT)", comment: "起動条件", warning: null },
-    { number: 2, page: 1, inputs: "M100", output: "Y1 (SET)", comment: "モーター正転", warning: "M100は変換表に影響します" },
-    { number: 3, page: 2, inputs: "T0 AND NOT X5", output: "Y2 (OUT)", comment: "タイマー制御", warning: null },
+    { number: 1,  page: 1, inputs: "X0 AND X1",               output: "Y0 (OUT)",   comment: "起動条件",                  warning: null },
+    { number: 2,  page: 1, inputs: "M100",                     output: "Y1 (SET)",   comment: "モーター正転セット",         warning: "M100は変換表に影響します" },
+    { number: 3,  page: 2, inputs: "T0 AND NOT X5",            output: "Y2 (OUT)",   comment: "タイマー制御出力",          warning: null },
+    { number: 4,  page: 2, inputs: "X2 OR M200",               output: "Y3 (OUT)",   comment: "非常停止または内部フラグ",  warning: null },
+    { number: 5,  page: 2, inputs: "NOT X3",                   output: "M201 (OUT)", comment: "センサー未検出フラグ",      warning: null },
+    { number: 6,  page: 3, inputs: "M201 AND T1",              output: "Y4 (SET)",   comment: "遅延後アラーム出力",        warning: "T1のプリセット値要確認" },
+    { number: 7,  page: 3, inputs: "X4",                       output: "T0 (TMR)",   comment: "タイマーT0起動 (1.0s)",    warning: null },
+    { number: 8,  page: 3, inputs: "X5",                       output: "T1 (TMR)",   comment: "タイマーT1起動 (0.5s)",    warning: null },
+    { number: 9,  page: 4, inputs: "C0 AND M100",              output: "Y5 (OUT)",   comment: "カウント完了かつ正転中",   warning: null },
+    { number: 10, page: 4, inputs: "X6",                       output: "C0 (CNT)",   comment: "カウンターC0インクリメント", warning: null },
+    { number: 11, page: 4, inputs: "M100 AND NOT M201",        output: "Y6 (OUT)",   comment: "正転中かつ正常時の補助出力", warning: null },
+    { number: 12, page: 5, inputs: "D100 >= K50",              output: "M300 (OUT)", comment: "データレジスタ閾値超え検出", warning: "D100の更新元ラダーを確認" },
+    { number: 13, page: 5, inputs: "M300",                     output: "Y7 (SET)",   comment: "閾値超えアラーム出力",     warning: null },
+    { number: 14, page: 5, inputs: "X7 AND NOT M300",          output: "Y10 (OUT)",  comment: "手動復帰条件",             warning: null },
+    { number: 15, page: 6, inputs: "M100 OR M201 OR M300",     output: "Y11 (OUT)",  comment: "いずれかのフラグで表示灯点灯", warning: null },
   ];
 
   return (
@@ -269,11 +281,32 @@ function MockInterpretationCard() {
 /* ── Step 3 モック：変換表 ── */
 function MockConversionTableCard() {
   const mockTable = [
-    { device: "X0", cVar: "input_start", type: "bool", desc: "起動スイッチ" },
-    { device: "X1", cVar: "input_stop", type: "bool", desc: "停止スイッチ" },
-    { device: "M100", cVar: "relay_motor_fwd", type: "bool", desc: "モーター正転フラグ" },
-    { device: "Y0", cVar: "output_run", type: "bool", desc: "運転出力" },
-    { device: "T0", cVar: "timer_delay", type: "uint16_t", desc: "遅延タイマー (100ms)" },
+    { device: "X0",   cVar: "input_start",         type: "bool",     desc: "起動スイッチ" },
+    { device: "X1",   cVar: "input_stop",           type: "bool",     desc: "停止スイッチ" },
+    { device: "X2",   cVar: "input_estop",          type: "bool",     desc: "非常停止ボタン" },
+    { device: "X3",   cVar: "input_sensor_a",       type: "bool",     desc: "センサーA検出" },
+    { device: "X4",   cVar: "input_timer_start",    type: "bool",     desc: "タイマー起動入力" },
+    { device: "X5",   cVar: "input_timer_stop",     type: "bool",     desc: "タイマー停止入力" },
+    { device: "X6",   cVar: "input_counter_pulse",  type: "bool",     desc: "カウンターパルス入力" },
+    { device: "X7",   cVar: "input_manual_reset",   type: "bool",     desc: "手動復帰ボタン" },
+    { device: "Y0",   cVar: "output_run",           type: "bool",     desc: "運転出力" },
+    { device: "Y1",   cVar: "output_motor_fwd",     type: "bool",     desc: "モーター正転出力" },
+    { device: "Y2",   cVar: "output_timer_out",     type: "bool",     desc: "タイマー出力" },
+    { device: "Y3",   cVar: "output_estop_relay",   type: "bool",     desc: "非常停止リレー" },
+    { device: "Y4",   cVar: "output_alarm",         type: "bool",     desc: "アラーム出力" },
+    { device: "Y5",   cVar: "output_count_done",    type: "bool",     desc: "カウント完了出力" },
+    { device: "Y6",   cVar: "output_aux",           type: "bool",     desc: "補助出力" },
+    { device: "Y7",   cVar: "output_alarm_latch",   type: "bool",     desc: "アラームラッチ出力" },
+    { device: "Y10",  cVar: "output_manual_run",    type: "bool",     desc: "手動運転出力" },
+    { device: "Y11",  cVar: "output_indicator",     type: "bool",     desc: "表示灯" },
+    { device: "M100", cVar: "relay_motor_fwd",      type: "bool",     desc: "モーター正転フラグ" },
+    { device: "M200", cVar: "relay_estop_flag",     type: "bool",     desc: "非常停止内部フラグ" },
+    { device: "M201", cVar: "relay_sensor_off",     type: "bool",     desc: "センサー未検出フラグ" },
+    { device: "M300", cVar: "relay_threshold_over", type: "bool",     desc: "閾値超えフラグ" },
+    { device: "T0",   cVar: "timer_delay_1s",       type: "uint16_t", desc: "遅延タイマー 1.0s" },
+    { device: "T1",   cVar: "timer_delay_500ms",    type: "uint16_t", desc: "遅延タイマー 0.5s" },
+    { device: "C0",   cVar: "counter_main",         type: "uint16_t", desc: "メインカウンター" },
+    { device: "D100", cVar: "data_sensor_value",    type: "int16_t",  desc: "センサーアナログ値" },
   ];
 
   return (
@@ -311,26 +344,100 @@ function MockConversionTableCard() {
 const MOCK_C_CODE = `/**
  * Auto-generated C code from PLC Ladder Diagram
  * Manufacturer: 三菱電機 (GX Works)
+ * Generated by Ladder to C Converter
  */
+
 #include <stdint.h>
 #include <stdbool.h>
 
-/* デバイス変数 */
-bool input_start;     /* X0 起動スイッチ */
-bool input_stop;      /* X1 停止スイッチ */
-bool relay_motor_fwd; /* M100 モーター正転 */
-bool output_run;      /* Y0 運転出力 */
-uint16_t timer_delay; /* T0 遅延タイマー */
+/* ── 入力デバイス ── */
+bool input_start;          /* X0  起動スイッチ */
+bool input_stop;           /* X1  停止スイッチ */
+bool input_estop;          /* X2  非常停止ボタン */
+bool input_sensor_a;       /* X3  センサーA検出 */
+bool input_timer_start;    /* X4  タイマー起動入力 */
+bool input_timer_stop;     /* X5  タイマー停止入力 */
+bool input_counter_pulse;  /* X6  カウンターパルス入力 */
+bool input_manual_reset;   /* X7  手動復帰ボタン */
+
+/* ── 出力デバイス ── */
+bool output_run;           /* Y0  運転出力 */
+bool output_motor_fwd;     /* Y1  モーター正転出力 */
+bool output_timer_out;     /* Y2  タイマー出力 */
+bool output_estop_relay;   /* Y3  非常停止リレー */
+bool output_alarm;         /* Y4  アラーム出力 */
+bool output_count_done;    /* Y5  カウント完了出力 */
+bool output_aux;           /* Y6  補助出力 */
+bool output_alarm_latch;   /* Y7  アラームラッチ出力 */
+bool output_manual_run;    /* Y10 手動運転出力 */
+bool output_indicator;     /* Y11 表示灯 */
+
+/* ── 内部リレー ── */
+bool relay_motor_fwd;      /* M100 モーター正転フラグ */
+bool relay_estop_flag;     /* M200 非常停止内部フラグ */
+bool relay_sensor_off;     /* M201 センサー未検出フラグ */
+bool relay_threshold_over; /* M300 閾値超えフラグ */
+
+/* ── タイマー・カウンター ── */
+uint16_t timer_delay_1s;   /* T0 遅延タイマー 1.0s */
+uint16_t timer_delay_500ms;/* T1 遅延タイマー 0.5s */
+uint16_t counter_main;     /* C0 メインカウンター */
+
+/* ── データレジスタ ── */
+int16_t data_sensor_value; /* D100 センサーアナログ値 */
 
 void plc_scan_cycle(void) {
+
   /* RUNG 1: 起動条件 */
   output_run = input_start && input_stop;
 
-  /* RUNG 2: モーター正転 */
+  /* RUNG 2: モーター正転セット */
   if (relay_motor_fwd) output_motor_fwd = true;
 
-  /* RUNG 3: タイマー制御 */
-  output_timer = (timer_delay > 0) && !input_stop;
+  /* RUNG 3: タイマー制御出力 */
+  output_timer_out = (timer_delay_1s > 0) && !input_timer_stop;
+
+  /* RUNG 4: 非常停止または内部フラグ */
+  output_estop_relay = input_estop || relay_estop_flag;
+
+  /* RUNG 5: センサー未検出フラグ */
+  relay_sensor_off = !input_sensor_a;
+
+  /* RUNG 6: 遅延後アラーム出力 */
+  /* ※ T1のプリセット値要確認 */
+  if (relay_sensor_off && (timer_delay_500ms >= T1_PRESET)) {
+    output_alarm = true;
+  }
+
+  /* RUNG 7: タイマーT0起動 (1.0s) */
+  if (input_timer_start) timer_delay_1s++;
+  else timer_delay_1s = 0;
+
+  /* RUNG 8: タイマーT1起動 (0.5s) */
+  if (input_timer_stop) timer_delay_500ms++;
+  else timer_delay_500ms = 0;
+
+  /* RUNG 9: カウント完了かつ正転中 */
+  output_count_done = (counter_main >= C0_PRESET) && relay_motor_fwd;
+
+  /* RUNG 10: カウンターC0インクリメント */
+  if (input_counter_pulse) counter_main++;
+
+  /* RUNG 11: 正転中かつ正常時の補助出力 */
+  output_aux = relay_motor_fwd && !relay_sensor_off;
+
+  /* RUNG 12: データレジスタ閾値超え検出 */
+  /* ※ D100の更新元ラダーを確認 */
+  relay_threshold_over = (data_sensor_value >= 50);
+
+  /* RUNG 13: 閾値超えアラームラッチ */
+  if (relay_threshold_over) output_alarm_latch = true;
+
+  /* RUNG 14: 手動復帰条件 */
+  output_manual_run = input_manual_reset && !relay_threshold_over;
+
+  /* RUNG 15: 状態表示灯 */
+  output_indicator = relay_motor_fwd || relay_sensor_off || relay_threshold_over;
 }`;
 
 function MockCodeCard() {
