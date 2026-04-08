@@ -1,9 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import StepCard from "@/components/StepCard";
 import type { Session, Rung, ConversionEntry, ClarificationQuestion } from "@/types/session";
 import { MODELS, getModelLabel } from "@/lib/models";
+
+const TABLE_BATCH_SIZE = 60;
+
+type TableBatchStatus = "pending" | "running" | "done" | "error";
+
+interface TableBatch {
+  index: number;
+  rungStart: number;
+  rungEnd: number;
+  status: TableBatchStatus;
+  errorMsg?: string;
+}
 
 interface Props {
   session: Session;
@@ -16,6 +28,20 @@ interface Props {
   onModelChange?: (model: string) => void;
 }
 
+function buildTableBatches(rungs: Rung[]): TableBatch[] {
+  const total = Math.ceil(rungs.length / TABLE_BATCH_SIZE);
+  return Array.from({ length: total }, (_, i) => {
+    const start = i * TABLE_BATCH_SIZE;
+    const end = Math.min(start + TABLE_BATCH_SIZE - 1, rungs.length - 1);
+    return {
+      index: i,
+      rungStart: rungs[start]?.number ?? start + 1,
+      rungEnd: rungs[end]?.number ?? end + 1,
+      status: "pending" as TableBatchStatus,
+    };
+  });
+}
+
 export default function Step2Interpretation({
   session,
   isFocused,
@@ -26,10 +52,15 @@ export default function Step2Interpretation({
   onEdit,
   onModelChange,
 }: Props) {
-  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [rungesExpanded, setRungesExpanded] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>(session.model ?? "claude-opus-4-6");
+
+  // generate-table バッチ状態
+  const [tableBatches, setTableBatches] = useState<TableBatch[]>([]);
+  const [accEntries, setAccEntries] = useState<ConversionEntry[]>([]);
+  const [isRunningTable, setIsRunningTable] = useState(false);
+  const [tablePhase, setTablePhase] = useState<"idle" | "batching" | "done">("idle");
 
   const rungs = session.rungs ?? [];
   const clarifications = session.clarifications ?? [];
@@ -37,34 +68,111 @@ export default function Step2Interpretation({
   const hasClarifications = clarifications.length > 0;
 
   function updateAnswer(id: string, answer: string) {
-    const updated = clarifications.map((c) => (c.id === id ? { ...c, answer } : c));
-    onUpdate(rungs, updated);
+    onUpdate(rungs, clarifications.map((c) => (c.id === id ? { ...c, answer } : c)));
   }
 
   function updateRung(id: string, field: keyof Rung, value: string) {
-    const updated = rungs.map((r) => (r.id === id ? { ...r, [field]: value } : r));
-    onUpdate(updated, clarifications);
+    onUpdate(rungs.map((r) => (r.id === id ? { ...r, [field]: value } : r)), clarifications);
   }
 
-  async function handleGenerateTable() {
-    setGenerating(true);
+  function updateTableBatch(index: number, updates: Partial<TableBatch>) {
+    setTableBatches((prev) => prev.map((b, i) => (i === index ? { ...b, ...updates } : b)));
+  }
+
+  const startBatching = useCallback(() => {
+    const batches = buildTableBatches(rungs);
+    setTableBatches(batches);
+    setAccEntries([]);
+    setTablePhase("batching");
     setError("");
     onModelChange?.(selectedModel);
+  }, [rungs, selectedModel, onModelChange]);
+
+  async function processTableBatch(
+    batchIndex: number,
+    currentEntries: ConversionEntry[],
+    batches: TableBatch[],
+  ): Promise<{ success: boolean; entries: ConversionEntry[] }> {
+    updateTableBatch(batchIndex, { status: "running", errorMsg: undefined });
+
+    const start = batchIndex * TABLE_BATCH_SIZE;
+    const batchRungs = rungs.slice(start, start + TABLE_BATCH_SIZE);
+
     try {
       const res = await fetch("/api/generate-table", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rungs, manufacturer: session.manufacturer, model: selectedModel }),
+        body: JSON.stringify({
+          rungs: batchRungs,
+          manufacturer: session.manufacturer,
+          model: selectedModel,
+        }),
       });
-      const data = await res.json() as { conversionTable?: ConversionEntry[]; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "生成失敗");
-      onComplete(data.conversionTable ?? []);
+      const data = await res.json() as { entries?: ConversionEntry[]; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "エラー");
+
+      // 重複除外してマージ
+      const seen = new Set(currentEntries.map((e) => e.plcDevice));
+      const merged = [...currentEntries];
+      for (const entry of data.entries ?? []) {
+        if (!seen.has(entry.plcDevice)) {
+          seen.add(entry.plcDevice);
+          merged.push(entry);
+        }
+      }
+
+      setAccEntries(merged);
+      updateTableBatch(batchIndex, { status: "done" });
+
+      // 全バッチ完了チェック
+      const updatedBatches = batches.map((b, i) =>
+        i === batchIndex ? { ...b, status: "done" as TableBatchStatus } : b
+      );
+      if (updatedBatches.every((b) => b.status === "done")) {
+        setTablePhase("done");
+      }
+
+      return { success: true, entries: merged };
     } catch (e) {
-      setError(e instanceof Error ? e.message : "エラーが発生しました");
-    } finally {
-      setGenerating(false);
+      const msg = e instanceof Error ? e.message : "エラー";
+      updateTableBatch(batchIndex, { status: "error", errorMsg: msg });
+      return { success: false, entries: currentEntries };
     }
   }
+
+  async function runAllTableBatches() {
+    const batches = buildTableBatches(rungs);
+    setTableBatches(batches);
+    setAccEntries([]);
+    setTablePhase("batching");
+    setError("");
+    onModelChange?.(selectedModel);
+    setIsRunningTable(true);
+
+    let current: ConversionEntry[] = [];
+    for (let i = 0; i < batches.length; i++) {
+      const result = await processTableBatch(i, current, batches);
+      if (!result.success) break;
+      current = result.entries;
+    }
+    setIsRunningTable(false);
+  }
+
+  // PLCデバイス名でソート
+  function sortAndConfirm() {
+    const order = ["X", "Y", "M", "T", "C", "D", "R"];
+    const sorted = [...accEntries].sort((a, b) => {
+      const ai = order.findIndex((p) => a.plcDevice.startsWith(p));
+      const bi = order.findIndex((p) => b.plcDevice.startsWith(p));
+      if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      return a.plcDevice.localeCompare(b.plcDevice, undefined, { numeric: true });
+    });
+    onComplete(sorted);
+  }
+
+  const allTableDone = tableBatches.length > 0 && tableBatches.every((b) => b.status === "done");
+  const hasPendingTable = tableBatches.some((b) => b.status === "pending" || b.status === "error");
+  const hasAnyTableDone = tableBatches.some((b) => b.status === "done");
 
   return (
     <StepCard
@@ -113,9 +221,7 @@ export default function Step2Interpretation({
             <div className="divide-y divide-amber-100">
               {clarifications.map((c, i) => (
                 <div key={c.id} className="p-3 space-y-2">
-                  <p className="text-xs font-semibold text-gray-700">
-                    Q{i + 1}. {c.question}
-                  </p>
+                  <p className="text-xs font-semibold text-gray-700">Q{i + 1}. {c.question}</p>
                   <p className="text-xs text-gray-400">{c.context}</p>
                   <textarea
                     value={c.answer}
@@ -139,12 +245,9 @@ export default function Step2Interpretation({
             className="flex items-center justify-between w-full px-4 py-2.5 bg-gray-50
               hover:bg-gray-100 transition-colors text-left"
           >
-            <span className="text-sm font-medium text-gray-600">
-              ラング詳細 ({rungs.length} 件)
-            </span>
+            <span className="text-sm font-medium text-gray-600">ラング詳細 ({rungs.length} 件)</span>
             <span className="text-gray-400 text-xs">{rungesExpanded ? "▲ 閉じる" : "▼ 展開"}</span>
           </button>
-
           {rungesExpanded && (
             <div className="divide-y divide-gray-100">
               {rungs.map((rung) => (
@@ -167,39 +270,31 @@ export default function Step2Interpretation({
                       p.{rung.pageNumber}
                     </button>
                   </div>
-
                   {rung.warning && (
                     <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                       <span className="text-amber-500 flex-shrink-0 mt-0.5">⚠</span>
                       <p className="text-xs text-amber-800">{rung.warning}</p>
                     </div>
                   )}
-
                   <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
                     <span className="text-gray-500 pt-1.5 font-medium">入力</span>
-                    <input
-                      value={rung.inputs}
+                    <input value={rung.inputs}
                       onChange={(e) => updateRung(rung.id, "inputs", e.target.value)}
                       disabled={isComplete}
                       className="border border-gray-200 rounded-lg px-2 py-1.5 bg-white font-mono text-xs
-                        focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500"
-                    />
+                        focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500" />
                     <span className="text-gray-500 pt-1.5 font-medium">出力</span>
-                    <input
-                      value={rung.output}
+                    <input value={rung.output}
                       onChange={(e) => updateRung(rung.id, "output", e.target.value)}
                       disabled={isComplete}
                       className="border border-gray-200 rounded-lg px-2 py-1.5 bg-white font-mono text-xs
-                        focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500"
-                    />
+                        focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500" />
                     <span className="text-gray-500 pt-1.5 font-medium">メモ</span>
-                    <input
-                      value={rung.comment}
+                    <input value={rung.comment}
                       onChange={(e) => updateRung(rung.id, "comment", e.target.value)}
                       disabled={isComplete}
                       className="border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-xs
-                        focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500"
-                    />
+                        focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500" />
                   </div>
                 </div>
               ))}
@@ -207,19 +302,95 @@ export default function Step2Interpretation({
           )}
         </div>
 
-        {error && (
-          <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
-        )}
+        {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
+        {/* ── 変換表生成エリア ── */}
         {!isComplete && (
-          <button
-            onClick={handleGenerateTable}
-            disabled={generating || rungs.length === 0}
-            className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl
-              hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {generating ? "変換表を生成中..." : "変換表を生成 →"}
-          </button>
+          <>
+            {tablePhase === "idle" ? (
+              /* 開始ボタン */
+              <button
+                onClick={runAllTableBatches}
+                disabled={rungs.length === 0}
+                className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl
+                  hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                変換表を生成 →
+              </button>
+            ) : (
+              /* バッチ進捗 */
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-gray-600">
+                    変換表生成 ({tableBatches.filter((b) => b.status === "done").length}/{tableBatches.length} 完了)
+                  </p>
+                  {hasPendingTable && !isRunningTable && (
+                    <button
+                      onClick={runAllTableBatches}
+                      className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors"
+                    >
+                      ▶ {hasAnyTableDone ? "再開" : "全実行"}
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  {tableBatches.map((batch) => {
+                    const isDone = batch.status === "done";
+                    const isRunning = batch.status === "running";
+                    const isError = batch.status === "error";
+                    return (
+                      <div
+                        key={batch.index}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs
+                          ${isDone ? "bg-green-50 border-green-200" :
+                            isError ? "bg-red-50 border-red-200" :
+                            isRunning ? "bg-blue-50 border-blue-200" :
+                            "bg-gray-50 border-gray-200"}`}
+                      >
+                        <span className={`flex-shrink-0 font-bold
+                          ${isDone ? "text-green-500" : isError ? "text-red-500" :
+                            isRunning ? "text-blue-500" : "text-gray-300"}`}>
+                          {isDone ? "✓" : isError ? "✗" : isRunning ? "⟳" : "○"}
+                        </span>
+                        <span className={`flex-1 font-medium tabular-nums
+                          ${isDone ? "text-green-700" : isError ? "text-red-700" :
+                            isRunning ? "text-blue-700" : "text-gray-500"}`}>
+                          RUNG {batch.rungStart}〜{batch.rungEnd}
+                        </span>
+                        {isRunning && <span className="text-blue-400">処理中</span>}
+                        {isError && batch.errorMsg && (
+                          <span className="text-red-400 truncate max-w-[80px]" title={batch.errorMsg}>
+                            {batch.errorMsg.slice(0, 14)}
+                          </span>
+                        )}
+                        {!isDone && !isRunning && (
+                          <button
+                            onClick={() => processTableBatch(batch.index, accEntries, tableBatches)}
+                            disabled={isRunningTable}
+                            className="flex-shrink-0 px-2 py-1 bg-blue-600 text-white rounded-lg
+                              hover:bg-blue-700 disabled:opacity-40 transition-colors text-xs"
+                          >
+                            {isError ? "再試行" : "実行"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {allTableDone && (
+                  <button
+                    onClick={sortAndConfirm}
+                    className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl
+                      hover:bg-blue-700 transition-colors"
+                  >
+                    変換表を確定 ({accEntries.length} デバイス) →
+                  </button>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </StepCard>

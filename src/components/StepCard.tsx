@@ -96,7 +96,7 @@ export default function StepCard({
   return (
     <div
       className={`flex flex-col rounded-2xl border-2 transition-all duration-200 ${statusStyles[status]} ${width}`}
-      style={{ maxHeight: "calc((100vh - 80px) * 2)" }}
+      style={{ maxHeight: "calc((100vh - 80px) * 2)", overflow: "hidden" }}
     >
       {/* カードヘッダー */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
