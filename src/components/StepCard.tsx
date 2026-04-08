@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 
 interface StepCardProps {
   step: number;
@@ -25,6 +25,23 @@ const statusBadge = {
   complete: <span className="text-xs text-green-600 font-semibold">✓ 完了</span>,
 };
 
+/**
+ * スクロール可能な div に native wheel リスナーを付けて
+ * react-zoom-pan-pinch のズームハンドラへの伝播を阻止する
+ */
+function useBlockCanvasZoom(ref: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    };
+    el.addEventListener("wheel", handler, { passive: true });
+    return () => el.removeEventListener("wheel", handler);
+  }, [ref]);
+}
+
 export default function StepCard({
   step,
   title,
@@ -35,6 +52,9 @@ export default function StepCard({
   children,
   collapsedSummary,
 }: StepCardProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useBlockCanvasZoom(scrollRef);
+
   const isExpanded = status === "active" || status === "complete";
 
   if (isFocused) {
@@ -63,8 +83,7 @@ export default function StepCard({
   return (
     <div
       className={`flex flex-col rounded-2xl border-2 transition-all duration-200 ${statusStyles[status]} ${width}`}
-      style={{ maxHeight: "calc(100vh - 80px)" }}
-      onWheel={(e) => e.stopPropagation()}
+      style={{ maxHeight: "calc((100vh - 80px) * 2)" }}
     >
       {/* カードヘッダー */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
@@ -95,7 +114,9 @@ export default function StepCard({
       {status === "pending" ? (
         <div className="px-4 py-6 text-sm text-gray-400 text-center">{collapsedSummary}</div>
       ) : (
-        <div className="flex-1 overflow-y-auto">{children}</div>
+        <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
+          {children}
+        </div>
       )}
     </div>
   );

@@ -1,7 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, RefObject } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+
+/** カード内スクロール領域でズームを阻止するネイティブリスナー */
+function useBlockCanvasZoom(ref: RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    };
+    el.addEventListener("wheel", handler, { passive: true });
+    return () => el.removeEventListener("wheel", handler);
+  }, [ref]);
+}
 import Step1Upload from "./steps/Step1Upload";
 import Step2Interpretation from "./steps/Step2Interpretation";
 import Step3ConversionTable from "./steps/Step3ConversionTable";
@@ -148,6 +162,17 @@ function MockHeader({ step, title }: { step: number; title: string }) {
   );
 }
 
+/* ── モックカード共通：スクロール可能ラッパー ── */
+function MockScrollArea({ children, className }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useBlockCanvasZoom(ref);
+  return (
+    <div ref={ref} className={`overflow-y-auto min-h-0 ${className ?? ""}`}>
+      {children}
+    </div>
+  );
+}
+
 /* ── Step 2 モック：ラダー図解釈 ── */
 function MockInterpretationCard() {
   const mockClarifications = [
@@ -180,11 +205,10 @@ function MockInterpretationCard() {
   return (
     <div
       className="flex flex-col rounded-2xl border-2 border-gray-200 bg-white w-[480px] select-none"
-      style={{ maxHeight: "calc(100vh - 80px)" }}
-      onWheel={(e) => e.stopPropagation()}
+      style={{ maxHeight: "calc((100vh - 80px) * 2)" }}
     >
       <MockHeader step={2} title="ラダー図の解釈" />
-      <div className="p-4 space-y-4 overflow-y-auto">
+      <MockScrollArea className="p-4 space-y-4">
 
         {/* 確認事項セクション（モック） */}
         <div className="border border-amber-200 rounded-xl overflow-hidden">
@@ -237,7 +261,7 @@ function MockInterpretationCard() {
         <div className="w-full py-2.5 bg-gray-200 text-gray-400 text-sm font-semibold rounded-xl text-center">
           変換表を生成 →
         </div>
-      </div>
+      </MockScrollArea>
     </div>
   );
 }
@@ -255,11 +279,10 @@ function MockConversionTableCard() {
   return (
     <div
       className="flex flex-col rounded-2xl border-2 border-gray-200 bg-white w-[420px] opacity-60 select-none"
-      style={{ maxHeight: "calc(100vh - 80px)" }}
-      onWheel={(e) => e.stopPropagation()}
+      style={{ maxHeight: "calc((100vh - 80px) * 2)" }}
     >
       <MockHeader step={3} title="変換表" />
-      <div className="p-4 space-y-3 overflow-y-auto">
+      <MockScrollArea className="p-4 space-y-3">
         <p className="text-xs text-gray-400 italic">
           PLCデバイスとC変数の対応表です。各行を自由に編集できます。
         </p>
@@ -279,7 +302,7 @@ function MockConversionTableCard() {
         <div className="w-full py-2.5 bg-gray-200 text-gray-400 text-sm font-semibold rounded-xl text-center">
           Cコードを生成 →
         </div>
-      </div>
+      </MockScrollArea>
     </div>
   );
 }
@@ -314,8 +337,7 @@ function MockCodeCard() {
   return (
     <div
       className="flex flex-col rounded-2xl border-2 border-gray-200 bg-white w-[480px] opacity-60 select-none"
-      style={{ maxHeight: "calc(100vh - 80px)" }}
-      onWheel={(e) => e.stopPropagation()}
+      style={{ maxHeight: "calc((100vh - 80px) * 2)" }}
     >
       <MockHeader step={4} title="コード生成" />
       <div className="flex flex-col h-full">
@@ -323,7 +345,7 @@ function MockCodeCard() {
           <div className="px-4 py-2.5 text-sm font-medium border-b-2 border-blue-300 text-blue-400">C コード</div>
           <div className="px-4 py-2.5 text-sm font-medium text-gray-300">解釈ドキュメント</div>
         </div>
-        <div className="p-4 space-y-3 overflow-y-auto flex-1">
+        <MockScrollArea className="p-4 space-y-3 flex-1">
           <p className="text-xs text-gray-400 italic">
             変換表を確定すると、Cコードと解釈ドキュメントが生成されます。
           </p>
@@ -334,7 +356,7 @@ function MockCodeCard() {
             <div className="text-xs px-3 py-1.5 bg-gray-100 text-gray-400 rounded-lg">コピー</div>
             <div className="text-xs px-3 py-1.5 bg-blue-200 text-blue-400 rounded-lg">ダウンロード</div>
           </div>
-        </div>
+        </MockScrollArea>
       </div>
     </div>
   );
