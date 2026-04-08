@@ -14,10 +14,15 @@ export default function Home() {
 
   useEffect(() => {
     async function init() {
-      const [sessions, projs] = await Promise.all([getSessions(), getProjects()]);
-      setProjects(projs);
-      if (sessions.length > 0) setSession(sessions[0]);
-      setHydrated(true);
+      try {
+        const [sessions, projs] = await Promise.all([getSessions(), getProjects()]);
+        setProjects(projs);
+        if (sessions.length > 0) setSession(sessions[0]);
+      } catch (e) {
+        console.error("初期化エラー:", e);
+      } finally {
+        setHydrated(true);
+      }
     }
     init();
   }, []);
