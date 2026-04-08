@@ -82,7 +82,7 @@ export default function Canvas({ session, projects, onSessionUpdate, onSessionCr
 
             <TransformComponent
               wrapperStyle={{ width: "100%", height: "100%" }}
-              contentStyle={{ display: "flex", alignItems: "flex-start", gap: "20px", padding: "40px" }}
+              contentStyle={{ display: "flex", flexDirection: "row", flexWrap: "nowrap", alignItems: "flex-start", gap: "20px", padding: "40px", width: "max-content" }}
             >
               {/* Step 1 */}
               <Step1Upload
