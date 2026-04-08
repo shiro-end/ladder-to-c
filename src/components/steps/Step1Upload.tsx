@@ -338,17 +338,48 @@ export default function Step1Upload({
               </p>
             )}
           </div>
-        ) : phase === "batch" ? (
+        ) : (
+          <>
+            {/* ── メーカー選択（常時表示） ── */}
+            <div className="flex gap-4">
+              {(["mitsubishi", "keyence"] as Manufacturer[]).map((m) => (
+                <label key={m} className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="manufacturer" value={m}
+                    checked={manufacturer === m} onChange={() => setManufacturer(m)}
+                    className="accent-blue-600" />
+                  <span className="text-sm text-gray-700">
+                    {m === "mitsubishi" ? "三菱電機" : "キーエンス"}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {/* ── モデル選択（常時表示） ── */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-500">モデルを選ぶ</label>
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                {MODELS.map((m) => (
+                  <label key={m.id} className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="model" value={m.id}
+                      checked={model === m.id} onChange={() => setModel(m.id)}
+                      className="accent-blue-600" />
+                    <span className="text-sm text-gray-700">{m.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {phase === "batch" ? (
           /* ── バッチ処理フェーズ ── */
           <>
-            <div>
-              <p className="text-sm font-medium text-gray-700 break-all">
-                {session?.pdfName ?? file?.name}
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {pageCount} ページ · {MODELS.find((m) => m.id === model)?.label}
-              </p>
-            </div>
+            {(session?.pdfName ?? file?.name) && (
+              <div>
+                <p className="text-sm font-medium text-gray-700 break-all">
+                  {session?.pdfName ?? file?.name}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">{pageCount} ページ</p>
+              </div>
+            )}
 
             {/* 全バッチ実行 / 再開 */}
             {hasPending && (
@@ -437,37 +468,8 @@ export default function Step1Upload({
             </button>
           </>
         ) : (
-          /* ── アップロードフェーズ ── */
+          /* ── アップロードフェーズ（メーカー・モデルは上部に表示済み） ── */
           <>
-            {/* メーカー選択 */}
-            <div className="flex gap-4">
-              {(["mitsubishi", "keyence"] as Manufacturer[]).map((m) => (
-                <label key={m} className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="radio" name="manufacturer" value={m}
-                    checked={manufacturer === m} onChange={() => setManufacturer(m)}
-                    className="accent-blue-600" />
-                  <span className="text-sm text-gray-700">
-                    {m === "mitsubishi" ? "三菱電機" : "キーエンス"}
-                  </span>
-                </label>
-              ))}
-            </div>
-
-            {/* モデル選択 */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">モデルを選ぶ</label>
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                {MODELS.map((m) => (
-                  <label key={m.id} className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="model" value={m.id}
-                      checked={model === m.id} onChange={() => setModel(m.id)}
-                      className="accent-blue-600" />
-                    <span className="text-sm text-gray-700">{m.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
             {/* プロジェクト選択 */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-500">プロジェクト</label>
@@ -548,6 +550,8 @@ export default function Step1Upload({
             >
               {isParsing ? "解析中..." : "PDFを読み込む →"}
             </button>
+          </>
+        )}
           </>
         )}
       </div>
