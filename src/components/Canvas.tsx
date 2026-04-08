@@ -108,6 +108,7 @@ export default function Canvas({ session, projects, onSessionUpdate, onSessionCr
                     onSessionUpdate({ conversionTable, activeStep: 3 })
                   }
                   onEdit={() => onSessionUpdate({ activeStep: 2 })}
+                  onModelChange={(model) => onSessionUpdate({ model })}
                 />
               ) : (
                 <MockInterpretationCard />
@@ -124,6 +125,7 @@ export default function Canvas({ session, projects, onSessionUpdate, onSessionCr
                     onSessionUpdate({ cCode, interpretationDoc, activeStep: 4 })
                   }
                   onEdit={() => onSessionUpdate({ activeStep: 3 })}
+                  onModelChange={(model) => onSessionUpdate({ model })}
                 />
               ) : (
                 <MockConversionTableCard />

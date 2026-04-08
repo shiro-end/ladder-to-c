@@ -3,6 +3,7 @@
 import { useState } from "react";
 import StepCard from "@/components/StepCard";
 import type { Session, ConversionEntry } from "@/types/session";
+import { MODELS, getModelLabel } from "@/lib/models";
 
 interface Props {
   session: Session;
@@ -11,6 +12,7 @@ interface Props {
   onUpdate: (table: ConversionEntry[]) => void;
   onComplete: (cCode: string, interpretationDoc: string) => void;
   onEdit?: () => void;
+  onModelChange?: (model: string) => void;
 }
 
 const DATA_TYPES = ["bool", "uint16_t", "uint32_t", "int16_t", "int32_t", "float"];
@@ -22,9 +24,11 @@ export default function Step3ConversionTable({
   onUpdate,
   onComplete,
   onEdit,
+  onModelChange,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedModel, setSelectedModel] = useState<string>(session.model ?? "claude-opus-4-6");
   const table = session.conversionTable ?? [];
   const isComplete = session.activeStep > 3;
 
@@ -50,6 +54,7 @@ export default function Step3ConversionTable({
   async function handleGenerateCode() {
     setLoading(true);
     setError("");
+    onModelChange?.(selectedModel);
     try {
       const res = await fetch("/api/generate-code", {
         method: "POST",
@@ -59,6 +64,7 @@ export default function Step3ConversionTable({
           conversionTable: table,
           manufacturer: session.manufacturer,
           clarifications: session.clarifications,
+          model: selectedModel,
         }),
       });
       const data = await res.json() as { cCode?: string; interpretationDoc?: string; error?: string };
@@ -87,6 +93,27 @@ export default function Step3ConversionTable({
       }
     >
       <div className="p-4 space-y-3">
+        {/* ── モデル選択 ── */}
+        {isComplete ? (
+          <p className="text-xs text-blue-600 font-medium">
+            使用モデル: {getModelLabel(selectedModel)}
+          </p>
+        ) : (
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-gray-500">コード生成に使うモデル</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {MODELS.map((m) => (
+                <label key={m.id} className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="model-step3" value={m.id}
+                    checked={selectedModel === m.id} onChange={() => setSelectedModel(m.id)}
+                    className="accent-blue-600" />
+                  <span className="text-sm text-gray-700">{m.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* テーブルヘッダー */}
         <div className="grid grid-cols-[80px_1fr_90px_1fr] gap-1 px-1">
           {["PLCデバイス", "C変数名", "型", "説明"].map((h) => (

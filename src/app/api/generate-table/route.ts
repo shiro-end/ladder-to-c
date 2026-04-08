@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { jsonrepair } from "jsonrepair";
 import type { Rung, ConversionEntry } from "@/types/session";
 
@@ -8,7 +9,7 @@ export const maxDuration = 120;
 const BATCH_SIZE = 60;
 
 async function extractDevicesFromBatch(
-  anthropic: Anthropic,
+  model: string,
   rungs: Rung[],
   manufacturerName: string,
 ): Promise<Omit<ConversionEntry, "id">[]> {
@@ -16,12 +17,7 @@ async function extractDevicesFromBatch(
     .map((r) => `RUNG ${r.number}: 入力=${r.inputs} 出力=${r.output} コメント=${r.comment}`)
     .join("\n");
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 4096,
-    messages: [{
-      role: "user",
-      content: `以下は${manufacturerName}PLCのラダー図解析結果（一部）です。
+  const prompt = `以下は${manufacturerName}PLCのラダー図解析結果（一部）です。
 使用されているPLCデバイスを抽出し、C言語変数への対応表をJSONのみで返してください。
 
 ラダー図:
@@ -29,11 +25,27 @@ ${rungText}
 
 {"conversionTable": [{"plcDevice": "X0", "cVariable": "input_start", "dataType": "bool", "description": "起動スイッチ"}]}
 
-dataTypeは bool / uint16_t / uint32_t / int16_t のいずれか。JSONのみ返してください。`,
-    }],
-  });
+dataTypeは bool / uint16_t / uint32_t / int16_t のいずれか。JSONのみ返してください。`;
 
-  const text = response.content.find((b) => b.type === "text")?.text ?? "";
+  let text = "";
+  if (model.startsWith("gpt-")) {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const res = await openai.chat.completions.create({
+      model,
+      max_tokens: 4096,
+      messages: [{ role: "user", content: prompt }],
+    });
+    text = res.choices[0]?.message?.content ?? "";
+  } else {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const res = await anthropic.messages.create({
+      model,
+      max_tokens: 4096,
+      messages: [{ role: "user", content: prompt }],
+    });
+    text = res.content.find((b) => b.type === "text")?.text ?? "";
+  }
+
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) return [];
 
@@ -48,12 +60,12 @@ dataTypeは bool / uint16_t / uint32_t / int16_t のいずれか。JSONのみ返
 
 export async function POST(req: NextRequest) {
   try {
-    const { rungs, manufacturer } = (await req.json()) as {
+    const { rungs, manufacturer, model = "claude-opus-4-6" } = (await req.json()) as {
       rungs: Rung[];
       manufacturer: string;
+      model?: string;
     };
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const manufacturerName = manufacturer === "keyence" ? "キーエンス" : "三菱電機";
 
     // バッチ分割して並列処理
@@ -63,7 +75,7 @@ export async function POST(req: NextRequest) {
     }
 
     const batchResults = await Promise.all(
-      batches.map((batch) => extractDevicesFromBatch(anthropic, batch, manufacturerName))
+      batches.map((batch) => extractDevicesFromBatch(model, batch, manufacturerName))
     );
 
     // デバイス名で重複排除してマージ

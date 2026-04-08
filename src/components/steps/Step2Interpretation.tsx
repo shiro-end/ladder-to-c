@@ -3,6 +3,7 @@
 import { useState } from "react";
 import StepCard from "@/components/StepCard";
 import type { Session, Rung, ConversionEntry, ClarificationQuestion } from "@/types/session";
+import { MODELS, getModelLabel } from "@/lib/models";
 
 interface Props {
   session: Session;
@@ -12,6 +13,7 @@ interface Props {
   onUpdate: (rungs: Rung[], clarifications: ClarificationQuestion[]) => void;
   onComplete: (conversionTable: ConversionEntry[]) => void;
   onEdit?: () => void;
+  onModelChange?: (model: string) => void;
 }
 
 export default function Step2Interpretation({
@@ -22,10 +24,12 @@ export default function Step2Interpretation({
   onUpdate,
   onComplete,
   onEdit,
+  onModelChange,
 }: Props) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [rungesExpanded, setRungesExpanded] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>(session.model ?? "claude-opus-4-6");
 
   const rungs = session.rungs ?? [];
   const clarifications = session.clarifications ?? [];
@@ -45,11 +49,12 @@ export default function Step2Interpretation({
   async function handleGenerateTable() {
     setGenerating(true);
     setError("");
+    onModelChange?.(selectedModel);
     try {
       const res = await fetch("/api/generate-table", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rungs, manufacturer: session.manufacturer }),
+        body: JSON.stringify({ rungs, manufacturer: session.manufacturer, model: selectedModel }),
       });
       const data = await res.json() as { conversionTable?: ConversionEntry[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? "生成失敗");
@@ -73,6 +78,27 @@ export default function Step2Interpretation({
       collapsedSummary={<p className="text-xs">{rungs.length} ラング解析済み</p>}
     >
       <div className="p-4 space-y-4">
+
+        {/* ── モデル選択 ── */}
+        {isComplete ? (
+          <p className="text-xs text-blue-600 font-medium">
+            使用モデル: {getModelLabel(selectedModel)}
+          </p>
+        ) : (
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-gray-500">変換表生成に使うモデル</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {MODELS.map((m) => (
+                <label key={m.id} className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="model-step2" value={m.id}
+                    checked={selectedModel === m.id} onChange={() => setSelectedModel(m.id)}
+                    className="accent-blue-600" />
+                  <span className="text-sm text-gray-700">{m.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── 確認事項セクション ── */}
         {hasClarifications && (

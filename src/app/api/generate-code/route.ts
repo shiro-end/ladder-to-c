@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import type { Rung, ConversionEntry, ClarificationQuestion } from "@/types/session";
 
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   try {
-    const { rungs, conversionTable, manufacturer, clarifications } = (await req.json()) as {
-      rungs: Rung[];
-      conversionTable: ConversionEntry[];
-      manufacturer: string;
-      clarifications?: ClarificationQuestion[];
-    };
+    const { rungs, conversionTable, manufacturer, clarifications, model = "claude-opus-4-6" } =
+      (await req.json()) as {
+        rungs: Rung[];
+        conversionTable: ConversionEntry[];
+        manufacturer: string;
+        clarifications?: ClarificationQuestion[];
+        model?: string;
+      };
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const manufacturerName = manufacturer === "keyence" ? "キーエンス" : "三菱電機";
 
     const rungText = rungs
@@ -30,12 +32,7 @@ export async function POST(req: NextRequest) {
         answeredQA.map((c) => `Q: ${c.question}\nA: ${c.answer}`).join("\n\n")
       : "";
 
-    const response = await anthropic.messages.create({
-      model: "claude-opus-4-6",
-      max_tokens: 8192,
-      messages: [{
-        role: "user",
-        content: `${manufacturerName}PLCのラダー図をC言語に変換してください。${qaContext}
+    const prompt = `${manufacturerName}PLCのラダー図をC言語に変換してください。${qaContext}
 
 【ラダー図】
 ${rungText}
@@ -62,11 +59,27 @@ interpretationDocの要件:
 - Markdown形式
 - 各ラングの動作を日本語で説明
 - 特記事項（タイマー・カウンターなど）を明記
-- 確認事項の回答を踏まえた補足を含める`,
-      }],
-    });
+- 確認事項の回答を踏まえた補足を含める`;
 
-    const text = response.content.find((b) => b.type === "text")?.text ?? "";
+    let text = "";
+    if (model.startsWith("gpt-")) {
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const res = await openai.chat.completions.create({
+        model,
+        max_tokens: 8192,
+        messages: [{ role: "user", content: prompt }],
+      });
+      text = res.choices[0]?.message?.content ?? "";
+    } else {
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const res = await anthropic.messages.create({
+        model,
+        max_tokens: 8192,
+        messages: [{ role: "user", content: prompt }],
+      });
+      text = res.content.find((b) => b.type === "text")?.text ?? "";
+    }
+
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("レスポンスのJSON解析に失敗しました");
 

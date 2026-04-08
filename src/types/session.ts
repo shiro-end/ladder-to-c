@@ -40,6 +40,7 @@ export interface Session {
   projectId: string | null;
   activeStep: 1 | 2 | 3 | 4;
   manufacturer: Manufacturer;
+  model?: string;
   pdfName: string | null;
   pageCount: number;
   rungs: Rung[] | null;

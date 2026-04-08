@@ -3,18 +3,10 @@
 import { useState, useRef, useEffect, ChangeEvent, DragEvent } from "react";
 import StepCard from "@/components/StepCard";
 import type { Session, Manufacturer, Rung, ClarificationQuestion, Project } from "@/types/session";
+import { MODELS, type ModelId } from "@/lib/models";
 import { createProject } from "@/lib/db";
 
 const BATCH_SIZE = 5;
-
-const MODELS = [
-  { id: "claude-opus-4-6",   label: "Claude Opus 4",  provider: "Anthropic" },
-  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4", provider: "Anthropic" },
-  { id: "gpt-4o",            label: "GPT-4o",          provider: "OpenAI" },
-  { id: "gpt-4o-mini",       label: "GPT-4o mini",     provider: "OpenAI" },
-] as const;
-
-type ModelId = typeof MODELS[number]["id"];
 type BatchStatus = "pending" | "running" | "done" | "error";
 
 interface Batch {
@@ -287,6 +279,7 @@ export default function Step1Upload({
         name: sessionName,
         projectId,
         manufacturer,
+        model,
         pdfName: file.name,
         pageCount,
         rungs: [],
@@ -339,6 +332,11 @@ export default function Step1Upload({
             <p className="text-xs text-gray-500">
               {session?.manufacturer === "keyence" ? "キーエンス" : "三菱電機"} / {session?.pageCount} ページ
             </p>
+            {session?.model && (
+              <p className="text-xs text-blue-600 font-medium">
+                {MODELS.find((m) => m.id === session.model)?.label ?? session.model}
+              </p>
+            )}
           </div>
         ) : phase === "batch" ? (
           /* ── バッチ処理フェーズ ── */
