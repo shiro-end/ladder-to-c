@@ -20,12 +20,9 @@ PLCのラダー図PDFをアップロードし、C言語コードに変換するW
   - `src/lib/supabase.ts` にクライアント初期化
   - `src/lib/db.ts` にDB操作関数
   - 環境変数: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- **Vercel 環境変数**（Settings → Environment Variables に設定済み）
-  - `ANTHROPIC_API_KEY`
-  - `OPENAI_API_KEY`
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  - `SUPABASE_SERVICE_ROLE_KEY`
+- **Vercel 環境変数**（Settings → Environment Variables）
+  - 設定済み: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - 要追加: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`（Supabase ダッシュボード → Project Settings → API で確認）
 
 ## アーキテクチャ
 1. ユーザーがPDFをアップロード・LLMモデルを選択

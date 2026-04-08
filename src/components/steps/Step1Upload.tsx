@@ -37,7 +37,7 @@ export default function Step1Upload({
   session, projects, isFocused, onToggleFocus, onComplete, onProjectsChange,
 }: Props) {
   const [file, setFile] = useState<File | null>(null);
-  const [manufacturer, setManufacturer] = useState<Manufacturer>(session?.manufacturer ?? "mitsubishi");
+  const [manufacturer, setManufacturer] = useState<Manufacturer>(session?.manufacturer ?? "keyence");
   const [model, setModel] = useState<ModelId>("claude-opus-4-6");
   const [projectId, setProjectId] = useState<string | null>(session?.projectId ?? null);
   const [newProjectName, setNewProjectName] = useState("");
