@@ -1,6 +1,12 @@
 export type Manufacturer = "mitsubishi" | "keyence";
 export type StepStatus = "pending" | "active" | "complete";
 
+export interface Project {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Rung {
   id: string;
   number: number;
@@ -31,6 +37,7 @@ export interface Session {
   name: string;
   createdAt: string;
   updatedAt: string;
+  projectId: string | null;
   activeStep: 1 | 2 | 3 | 4;
   manufacturer: Manufacturer;
   pdfName: string | null;
@@ -40,4 +47,5 @@ export interface Session {
   conversionTable: ConversionEntry[] | null;
   cCode: string | null;
   interpretationDoc: string | null;
+  pdfPageUrls: string[] | null;
 }

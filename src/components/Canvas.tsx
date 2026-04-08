@@ -21,16 +21,17 @@ import Step2Interpretation from "./steps/Step2Interpretation";
 import Step3ConversionTable from "./steps/Step3ConversionTable";
 import Step4Generate from "./steps/Step4Generate";
 import PdfPreviewPanel from "./PdfPreviewPanel";
-import type { Session, Rung, ConversionEntry } from "@/types/session";
+import type { Session, Rung, ConversionEntry, Project } from "@/types/session";
 
 interface Props {
   session: Session | null;
-  pdfPages: string[];
+  projects: Project[];
   onSessionUpdate: (updates: Partial<Session>) => void;
-  onSessionCreate: (updates: Partial<Session>, pages: string[]) => void;
+  onSessionCreate: (updates: Partial<Session> & { id: string }, pageUrls: string[]) => void;
+  onProjectsChange: () => void;
 }
 
-export default function Canvas({ session, pdfPages, onSessionUpdate, onSessionCreate }: Props) {
+export default function Canvas({ session, projects, onSessionUpdate, onSessionCreate, onProjectsChange }: Props) {
   const [focusedStep, setFocusedStep] = useState<number | null>(null);
   const [scale, setScale] = useState(1);
   const [previewPage, setPreviewPage] = useState<number | null>(null);
@@ -86,9 +87,11 @@ export default function Canvas({ session, pdfPages, onSessionUpdate, onSessionCr
               {/* Step 1 */}
               <Step1Upload
                 session={session}
+                projects={projects}
                 isFocused={focusedStep === 1}
                 onToggleFocus={() => toggleFocus(1)}
                 onComplete={(updates, pages) => onSessionCreate(updates, pages)}
+                onProjectsChange={onProjectsChange}
               />
 
               {/* Step 2 */}
@@ -140,7 +143,7 @@ export default function Canvas({ session, pdfPages, onSessionUpdate, onSessionCr
       {/* PDF プレビューパネル */}
       {previewPage !== null && (
         <PdfPreviewPanel
-          pages={pdfPages}
+          pages={session?.pdfPageUrls ?? []}
           initialPage={previewPage}
           onClose={() => setPreviewPage(null)}
         />

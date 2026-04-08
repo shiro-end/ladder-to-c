@@ -3,32 +3,31 @@
 import { useEffect, useState } from "react";
 import Canvas from "@/components/Canvas";
 import HistorySidebar from "@/components/HistorySidebar";
-import {
-  getSessions,
-  getSession,
-  saveSession,
-  createSession,
-  savePdfPages,
-  getPdfPages,
-} from "@/lib/session-storage";
-import type { Session } from "@/types/session";
+import { getSessions, getSession, saveSession, createSession, getProjects } from "@/lib/db";
+import type { Session, Project } from "@/types/session";
 
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
-  const [pdfPages, setPdfPages] = useState<string[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setHydrated(true);
-    const sessions = getSessions();
-    if (sessions.length > 0) {
-      setSession(sessions[0]);
-      setPdfPages(getPdfPages(sessions[0].id));
+    async function init() {
+      const [sessions, projs] = await Promise.all([getSessions(), getProjects()]);
+      setProjects(projs);
+      if (sessions.length > 0) setSession(sessions[0]);
+      setHydrated(true);
     }
+    init();
   }, []);
 
-  function handleSessionUpdate(updates: Partial<Session>) {
+  async function handleProjectsChange() {
+    const projs = await getProjects();
+    setProjects(projs);
+  }
+
+  async function handleSessionUpdate(updates: Partial<Session>) {
     setSession((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, ...updates };
@@ -37,35 +36,32 @@ export default function Home() {
     });
   }
 
-  function handleSessionCreate(updates: Partial<Session>, pages: string[]) {
-    setSession((prev) => {
-      // 既存セッションがある場合は更新、なければ新規作成
-      const base =
-        prev ??
-        createSession(
-          updates.manufacturer ?? "mitsubishi",
-          updates.pdfName ?? "ladder.pdf"
-        );
-      const updated = { ...base, ...updates };
-      saveSession(updated);
-      savePdfPages(updated.id, pages);
-      setPdfPages(pages);
-      return updated;
-    });
+  async function handleSessionCreate(
+    updates: Partial<Session> & { id: string },
+    pageUrls: string[]
+  ) {
+    const { id, ...rest } = updates;
+    const base = await createSession(
+      id,
+      rest.manufacturer ?? "mitsubishi",
+      rest.pdfName ?? "ladder.pdf",
+      rest.projectId ?? null
+    );
+    const updated: Session = { ...base, ...rest, pdfPageUrls: pageUrls };
+    await saveSession(updated);
+    setSession(updated);
   }
 
-  function handleSelectSession(id: string) {
-    const s = getSession(id);
+  async function handleSelectSession(id: string) {
+    const s = await getSession(id);
     if (s) {
       setSession(s);
-      setPdfPages(getPdfPages(s.id));
       setShowHistory(false);
     }
   }
 
   function handleNewSession() {
     setSession(null);
-    setPdfPages([]);
     setShowHistory(false);
   }
 
@@ -104,9 +100,10 @@ export default function Home() {
       <div className="flex-1 relative overflow-hidden">
         <Canvas
           session={session}
-          pdfPages={pdfPages}
+          projects={projects}
           onSessionUpdate={handleSessionUpdate}
           onSessionCreate={handleSessionCreate}
+          onProjectsChange={handleProjectsChange}
         />
 
         {showHistory && (

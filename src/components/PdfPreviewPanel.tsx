@@ -35,7 +35,7 @@ export default function PdfPreviewPanel({ pages, initialPage, onClose }: Props) 
       <div className="flex-1 overflow-y-auto p-3">
         {src ? (
           <img
-            src={`data:image/png;base64,${src}`}
+            src={src}
             alt={`PDF ページ ${current}`}
             className="w-full rounded-lg border border-gray-100"
           />
