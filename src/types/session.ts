@@ -11,6 +11,13 @@ export interface Rung {
   warning: string | null;
 }
 
+export interface ClarificationQuestion {
+  id: string;
+  question: string;
+  context: string;
+  answer: string;
+}
+
 export interface ConversionEntry {
   id: string;
   plcDevice: string;
@@ -29,6 +36,7 @@ export interface Session {
   pdfName: string | null;
   pageCount: number;
   rungs: Rung[] | null;
+  clarifications: ClarificationQuestion[] | null;
   conversionTable: ConversionEntry[] | null;
   cCode: string | null;
   interpretationDoc: string | null;

@@ -84,7 +84,7 @@ export default function Canvas({ session, pdfPages, onSessionUpdate, onSessionCr
                   isFocused={focusedStep === 2}
                   onToggleFocus={() => toggleFocus(2)}
                   onPreviewPage={(page) => setPreviewPage(page)}
-                  onUpdate={(rungs: Rung[]) => onSessionUpdate({ rungs })}
+                  onUpdate={(rungs: Rung[], clarifications) => onSessionUpdate({ rungs, clarifications })}
                   onComplete={(conversionTable: ConversionEntry[]) =>
                     onSessionUpdate({ conversionTable, activeStep: 3 })
                   }

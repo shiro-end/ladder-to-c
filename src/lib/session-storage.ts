@@ -48,6 +48,7 @@ export function createSession(manufacturer: Manufacturer, pdfName: string): Sess
     pdfName,
     pageCount: 0,
     rungs: null,
+    clarifications: null,
     conversionTable: null,
     cCode: null,
     interpretationDoc: null,

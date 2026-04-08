@@ -2,8 +2,7 @@
 
 import { useState, useRef, ChangeEvent, DragEvent } from "react";
 import StepCard from "@/components/StepCard";
-import type { Session, Manufacturer } from "@/types/session";
-import type { Rung } from "@/types/session";
+import type { Session, Manufacturer, Rung, ClarificationQuestion } from "@/types/session";
 import { savePdfPages } from "@/lib/session-storage";
 
 interface Props {
@@ -48,7 +47,13 @@ export default function Step1Upload({ session, isFocused, onToggleFocus, onCompl
       form.append("manufacturer", manufacturer);
 
       const res = await fetch("/api/interpret", { method: "POST", body: form });
-      const data = await res.json() as { rungs?: Rung[]; pages?: string[]; pageCount?: number; error?: string };
+      const data = await res.json() as {
+        rungs?: Rung[];
+        clarifications?: ClarificationQuestion[];
+        pages?: string[];
+        pageCount?: number;
+        error?: string;
+      };
       if (!res.ok) throw new Error(data.error ?? "解析失敗");
 
       const pages = data.pages ?? [];
@@ -58,6 +63,7 @@ export default function Step1Upload({ session, isFocused, onToggleFocus, onCompl
           pdfName: file.name,
           pageCount: data.pageCount ?? pages.length,
           rungs: data.rungs ?? [],
+          clarifications: data.clarifications ?? [],
           activeStep: 2,
         },
         pages
