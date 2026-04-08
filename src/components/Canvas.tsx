@@ -31,7 +31,8 @@ export default function Canvas({ session, pdfPages, onSessionUpdate, onSessionCr
         initialScale={1}
         minScale={0.3}
         maxScale={2}
-        wheel={{ step: 0.08 }}
+        smooth={false}
+        wheel={{ step: 0.1 }}
         panning={{ allowLeftClickPan: true, excluded: ["input", "textarea", "select", "button"] }}
         centerOnInit
         onTransform={(_, state) => setScale(state.scale)}
@@ -89,7 +90,7 @@ export default function Canvas({ session, pdfPages, onSessionUpdate, onSessionCr
                   }
                 />
               ) : (
-                <PlaceholderCard step={2} title="ラダー図の解釈" />
+                <MockInterpretationCard />
               )}
 
               {/* Step 3 */}
@@ -104,7 +105,7 @@ export default function Canvas({ session, pdfPages, onSessionUpdate, onSessionCr
                   }
                 />
               ) : (
-                <PlaceholderCard step={3} title="変換表" />
+                <MockConversionTableCard />
               )}
 
               {/* Step 4 */}
@@ -115,7 +116,7 @@ export default function Canvas({ session, pdfPages, onSessionUpdate, onSessionCr
                   onToggleFocus={() => toggleFocus(4)}
                 />
               ) : (
-                <PlaceholderCard step={4} title="コード生成" />
+                <MockCodeCard />
               )}
             </TransformComponent>
           </>
@@ -134,14 +135,162 @@ export default function Canvas({ session, pdfPages, onSessionUpdate, onSessionCr
   );
 }
 
-function PlaceholderCard({ step, title }: { step: number; title: string }) {
+/* ── モックカード共通ヘッダー ── */
+function MockHeader({ step, title }: { step: number; title: string }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">Step {step}</span>
+        <span className="font-semibold text-gray-400">{title}</span>
+      </div>
+      <span className="text-xs bg-gray-100 text-gray-400 rounded-full px-2 py-0.5">サンプル</span>
+    </div>
+  );
+}
+
+/* ── Step 2 モック：ラダー図解釈 ── */
+function MockInterpretationCard() {
+  const mockRungs = [
+    { number: 1, page: 1, inputs: "X0 AND X1", output: "Y0 (OUT)", comment: "起動条件", warning: null },
+    { number: 2, page: 1, inputs: "M100", output: "Y1 (SET)", comment: "モーター正転", warning: "M100は変換表に影響します" },
+    { number: 3, page: 2, inputs: "T0 AND NOT X5", output: "Y2 (OUT)", comment: "タイマー制御", warning: null },
+  ];
+
   return (
     <div
-      className="rounded-2xl border-2 border-dashed border-gray-200 bg-white/60 w-72 flex flex-col items-center justify-center py-12 px-6 gap-2"
+      className="flex flex-col rounded-2xl border-2 border-gray-200 bg-white w-[480px] opacity-60 select-none"
+      style={{ maxHeight: "calc(100vh - 80px)" }}
       onWheel={(e) => e.stopPropagation()}
     >
-      <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">Step {step}</span>
-      <span className="text-sm text-gray-400">{title}</span>
+      <MockHeader step={2} title="ラダー図の解釈" />
+      <div className="p-4 space-y-3 overflow-y-auto">
+        <p className="text-xs text-gray-400 italic">
+          PDFをアップロードすると Claude がラダー図を解釈し、各ラングを編集できる形式で表示します。
+        </p>
+        {mockRungs.map((r) => (
+          <div key={r.number} className="border border-gray-100 rounded-xl p-3 space-y-2 bg-gray-50">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">RUNG {r.number}</span>
+              <span className="text-xs text-blue-300">p.{r.page} 👁</span>
+            </div>
+            {r.warning && (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <span className="text-amber-400 flex-shrink-0">⚠</span>
+                <p className="text-xs text-amber-700">{r.warning}</p>
+              </div>
+            )}
+            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+              <span className="text-gray-400 pt-1">入力</span>
+              <div className="border border-gray-200 rounded-lg px-2 py-1.5 bg-white font-mono text-gray-400">{r.inputs}</div>
+              <span className="text-gray-400 pt-1">出力</span>
+              <div className="border border-gray-200 rounded-lg px-2 py-1.5 bg-white font-mono text-gray-400">{r.output}</div>
+              <span className="text-gray-400 pt-1">メモ</span>
+              <div className="border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-400">{r.comment}</div>
+            </div>
+          </div>
+        ))}
+        <div className="w-full py-2.5 bg-gray-200 text-gray-400 text-sm font-semibold rounded-xl text-center">
+          変換表を生成 →
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Step 3 モック：変換表 ── */
+function MockConversionTableCard() {
+  const mockTable = [
+    { device: "X0", cVar: "input_start", type: "bool", desc: "起動スイッチ" },
+    { device: "X1", cVar: "input_stop", type: "bool", desc: "停止スイッチ" },
+    { device: "M100", cVar: "relay_motor_fwd", type: "bool", desc: "モーター正転フラグ" },
+    { device: "Y0", cVar: "output_run", type: "bool", desc: "運転出力" },
+    { device: "T0", cVar: "timer_delay", type: "uint16_t", desc: "遅延タイマー (100ms)" },
+  ];
+
+  return (
+    <div
+      className="flex flex-col rounded-2xl border-2 border-gray-200 bg-white w-[420px] opacity-60 select-none"
+      style={{ maxHeight: "calc(100vh - 80px)" }}
+      onWheel={(e) => e.stopPropagation()}
+    >
+      <MockHeader step={3} title="変換表" />
+      <div className="p-4 space-y-3 overflow-y-auto">
+        <p className="text-xs text-gray-400 italic">
+          PLCデバイスとC変数の対応表です。各行を自由に編集できます。
+        </p>
+        <div className="grid grid-cols-[70px_1fr_80px_1fr] gap-1 px-1">
+          {["デバイス", "C変数名", "型", "説明"].map((h) => (
+            <span key={h} className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</span>
+          ))}
+        </div>
+        {mockTable.map((row) => (
+          <div key={row.device} className="grid grid-cols-[70px_1fr_80px_1fr] gap-1 items-center">
+            <div className="border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs text-gray-400 bg-gray-50">{row.device}</div>
+            <div className="border border-gray-200 rounded-lg px-2 py-1.5 font-mono text-xs text-gray-400 bg-gray-50">{row.cVar}</div>
+            <div className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-gray-400 bg-gray-50">{row.type}</div>
+            <div className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-gray-400 bg-gray-50">{row.desc}</div>
+          </div>
+        ))}
+        <div className="w-full py-2.5 bg-gray-200 text-gray-400 text-sm font-semibold rounded-xl text-center">
+          Cコードを生成 →
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Step 4 モック：コード生成 ── */
+const MOCK_C_CODE = `/**
+ * Auto-generated C code from PLC Ladder Diagram
+ * Manufacturer: 三菱電機 (GX Works)
+ */
+#include <stdint.h>
+#include <stdbool.h>
+
+/* デバイス変数 */
+bool input_start;     /* X0 起動スイッチ */
+bool input_stop;      /* X1 停止スイッチ */
+bool relay_motor_fwd; /* M100 モーター正転 */
+bool output_run;      /* Y0 運転出力 */
+uint16_t timer_delay; /* T0 遅延タイマー */
+
+void plc_scan_cycle(void) {
+  /* RUNG 1: 起動条件 */
+  output_run = input_start && input_stop;
+
+  /* RUNG 2: モーター正転 */
+  if (relay_motor_fwd) output_motor_fwd = true;
+
+  /* RUNG 3: タイマー制御 */
+  output_timer = (timer_delay > 0) && !input_stop;
+}`;
+
+function MockCodeCard() {
+  return (
+    <div
+      className="flex flex-col rounded-2xl border-2 border-gray-200 bg-white w-[480px] opacity-60 select-none"
+      style={{ maxHeight: "calc(100vh - 80px)" }}
+      onWheel={(e) => e.stopPropagation()}
+    >
+      <MockHeader step={4} title="コード生成" />
+      <div className="flex flex-col h-full">
+        <div className="flex border-b border-gray-100 px-4">
+          <div className="px-4 py-2.5 text-sm font-medium border-b-2 border-blue-300 text-blue-400">C コード</div>
+          <div className="px-4 py-2.5 text-sm font-medium text-gray-300">解釈ドキュメント</div>
+        </div>
+        <div className="p-4 space-y-3 overflow-y-auto flex-1">
+          <p className="text-xs text-gray-400 italic">
+            変換表を確定すると、Cコードと解釈ドキュメントが生成されます。
+          </p>
+          <pre className="text-xs font-mono bg-gray-950 text-green-300/60 rounded-xl p-4 whitespace-pre overflow-x-auto">
+            {MOCK_C_CODE}
+          </pre>
+          <div className="flex gap-2 justify-end">
+            <div className="text-xs px-3 py-1.5 bg-gray-100 text-gray-400 rounded-lg">コピー</div>
+            <div className="text-xs px-3 py-1.5 bg-blue-200 text-blue-400 rounded-lg">ダウンロード</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
