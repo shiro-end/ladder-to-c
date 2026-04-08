@@ -121,11 +121,8 @@ export default function Canvas({ session, projects, onSessionUpdate, onSessionCr
                   isFocused={focusedStep === 3}
                   onToggleFocus={() => toggleFocus(3)}
                   onUpdate={(table: ConversionEntry[]) => onSessionUpdate({ conversionTable: table })}
-                  onComplete={(cCode: string, interpretationDoc: string) =>
-                    onSessionUpdate({ cCode, interpretationDoc, activeStep: 4 })
-                  }
+                  onComplete={() => onSessionUpdate({ activeStep: 4 })}
                   onEdit={() => onSessionUpdate({ activeStep: 3 })}
-                  onModelChange={(model) => onSessionUpdate({ model })}
                 />
               ) : (
                 <MockConversionTableCard />
@@ -137,6 +134,10 @@ export default function Canvas({ session, projects, onSessionUpdate, onSessionCr
                   session={session}
                   isFocused={focusedStep === 4}
                   onToggleFocus={() => toggleFocus(4)}
+                  onComplete={(cCode, interpretationDoc) =>
+                    onSessionUpdate({ cCode, interpretationDoc })
+                  }
+                  onModelChange={(model) => onSessionUpdate({ model })}
                 />
               ) : (
                 <MockCodeCard />

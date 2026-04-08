@@ -1,18 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import StepCard from "@/components/StepCard";
 import type { Session, ConversionEntry } from "@/types/session";
-import { MODELS, getModelLabel } from "@/lib/models";
 
 interface Props {
   session: Session;
   isFocused: boolean;
   onToggleFocus: () => void;
   onUpdate: (table: ConversionEntry[]) => void;
-  onComplete: (cCode: string, interpretationDoc: string) => void;
+  onComplete: () => void;
   onEdit?: () => void;
-  onModelChange?: (model: string) => void;
 }
 
 const DATA_TYPES = ["bool", "uint16_t", "uint32_t", "int16_t", "int32_t", "float"];
@@ -24,11 +21,7 @@ export default function Step3ConversionTable({
   onUpdate,
   onComplete,
   onEdit,
-  onModelChange,
 }: Props) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [selectedModel, setSelectedModel] = useState<string>(session.model ?? "claude-opus-4-6");
   const table = session.conversionTable ?? [];
   const isComplete = session.activeStep > 3;
 
@@ -37,43 +30,14 @@ export default function Step3ConversionTable({
   }
 
   function addRow() {
-    onUpdate([...table, {
-      id: crypto.randomUUID(),
-      plcDevice: "",
-      cVariable: "",
-      dataType: "bool",
-      description: "",
-    }]);
+    onUpdate([
+      ...table,
+      { id: crypto.randomUUID(), plcDevice: "", cVariable: "", dataType: "bool", description: "" },
+    ]);
   }
 
   function removeRow(id: string) {
     onUpdate(table.filter((e) => e.id !== id));
-  }
-
-  async function handleGenerateCode() {
-    setLoading(true);
-    setError("");
-    onModelChange?.(selectedModel);
-    try {
-      const res = await fetch("/api/generate-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rungs: session.rungs,
-          conversionTable: table,
-          manufacturer: session.manufacturer,
-          clarifications: session.clarifications,
-          model: selectedModel,
-        }),
-      });
-      const data = await res.json() as { cCode?: string; interpretationDoc?: string; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "生成失敗");
-      onComplete(data.cCode ?? "", data.interpretationDoc ?? "");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "エラーが発生しました");
-    } finally {
-      setLoading(false);
-    }
   }
 
   return (
@@ -86,40 +50,19 @@ export default function Step3ConversionTable({
       onToggleFocus={onToggleFocus}
       onEdit={onEdit}
       collapsedSummary={
-        session.activeStep < 3
-          ? <p className="text-xs">ラダー図解釈後に生成されます</p>
-          : <p className="text-xs">{table.length} デバイス対応済み</p>
+        session.activeStep < 3 ? (
+          <p className="text-xs">ラダー図解釈後に生成されます</p>
+        ) : (
+          <p className="text-xs">{table.length} デバイス対応済み</p>
+        )
       }
     >
-      {/* ── モデル選択 ── */}
-      <div className="px-4 pt-4 pb-2">
-        {isComplete ? (
-          <p className="text-xs text-blue-600 font-medium">
-            使用モデル: {getModelLabel(selectedModel)}
-          </p>
-        ) : (
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-500">コード生成に使うモデル</p>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {MODELS.map((m) => (
-                <label key={m.id} className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="radio" name="model-step3" value={m.id}
-                    checked={selectedModel === m.id} onChange={() => setSelectedModel(m.id)}
-                    className="accent-blue-600" />
-                  <span className="text-sm text-gray-700">{m.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* ── カラムヘッダー（sticky） ── */}
       <div className="sticky top-0 z-10 bg-white border-y border-gray-100 px-4 py-2">
-        <div className={`grid gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide
-          ${isComplete
-            ? "grid-cols-[90px_1fr_100px_1fr]"
-            : "grid-cols-[90px_1fr_100px_1fr_24px]"}`}>
+        <div
+          className={`grid gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide
+            ${isComplete ? "grid-cols-[90px_1fr_100px_1fr]" : "grid-cols-[90px_1fr_100px_1fr_24px]"}`}
+        >
           <span>PLCデバイス</span>
           <span>C変数名</span>
           <span>型</span>
@@ -131,11 +74,11 @@ export default function Step3ConversionTable({
       {/* ── 行 ── */}
       <div className="px-4 py-2 space-y-1">
         {table.map((entry) => (
-          <div key={entry.id}
+          <div
+            key={entry.id}
             className={`grid gap-1 items-center
-              ${isComplete
-                ? "grid-cols-[90px_1fr_100px_1fr]"
-                : "grid-cols-[90px_1fr_100px_1fr_24px]"}`}>
+              ${isComplete ? "grid-cols-[90px_1fr_100px_1fr]" : "grid-cols-[90px_1fr_100px_1fr_24px]"}`}
+          >
             <input
               value={entry.plcDevice}
               onChange={(e) => updateEntry(entry.id, "plcDevice", e.target.value)}
@@ -159,7 +102,9 @@ export default function Step3ConversionTable({
               className="border border-gray-200 rounded-lg px-1 py-1.5 text-xs
                 focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500 w-full"
             >
-              {DATA_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              {DATA_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
             </select>
             <input
               value={entry.description}
@@ -170,8 +115,10 @@ export default function Step3ConversionTable({
                 focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500 w-full"
             />
             {!isComplete && (
-              <button onClick={() => removeRow(entry.id)}
-                className="text-gray-300 hover:text-red-400 transition-colors text-center">
+              <button
+                onClick={() => removeRow(entry.id)}
+                className="text-gray-300 hover:text-red-400 transition-colors text-center"
+              >
                 ×
               </button>
             )}
@@ -182,21 +129,21 @@ export default function Step3ConversionTable({
       {/* ── フッター ── */}
       <div className="px-4 pb-4 space-y-2">
         {!isComplete && (
-          <button onClick={addRow}
-            className="text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
+          <button
+            onClick={addRow}
+            className="text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+          >
             + 行を追加
           </button>
         )}
-        {error && (
-          <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
-        )}
         {!isComplete && (
           <button
-            onClick={handleGenerateCode}
-            disabled={loading || table.length === 0}
+            onClick={onComplete}
+            disabled={table.length === 0}
             className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl
-              hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-            {loading ? "コードを生成中..." : "Cコードを生成 →"}
+              hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            変換表を確定 →
           </button>
         )}
       </div>
