@@ -233,7 +233,6 @@ export default function Step1Upload({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          rungs: accRungs,
           clarifications: accClarifications,
           manufacturer: session?.manufacturer ?? manufacturer,
         }),

@@ -10,7 +10,14 @@
       "Bash(rm:*)",
       "Bash(vercel link:*)",
       "Bash(vercel env:*)",
-      "Bash(vercel --prod)"
+      "Bash(vercel --prod)",
+      "Bash(sed:*)",
+      "Bash(node -e \"require\\('openai'\\); console.log\\('ok'\\)\")",
+      "Bash(npx tsc:*)",
+      "Bash(vercel:*)",
+      "Bash(node -e \"require\\('pdfjs-dist/package.json'\\)\")",
+      "Bash(node -e \"const p = require\\('./node_modules/pdfjs-dist/package.json'\\); console.log\\(Object.keys\\(p.exports ?? {}\\).slice\\(0,10\\)\\)\")",
+      "Bash(node -e \"const p = JSON.parse\\(require\\('fs'\\).readFileSync\\('./node_modules/pdfjs-dist/package.json','utf8'\\)\\); console.log\\(JSON.stringify\\(p.exports,null,2\\)\\)\")"
     ]
   }
 }

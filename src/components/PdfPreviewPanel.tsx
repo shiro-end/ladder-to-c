@@ -15,7 +15,7 @@ export default function PdfPreviewPanel({ pages, initialPage, onClose }: Props) 
 
   return (
     <div
-      className="fixed right-4 top-16 bottom-4 w-80 z-40 bg-white rounded-2xl shadow-2xl
+      className="fixed right-4 top-16 bottom-4 w-[600px] z-40 bg-white rounded-2xl shadow-2xl
         border border-gray-200 flex flex-col animate-in slide-in-from-right-4 duration-200"
     >
       {/* ヘッダー */}

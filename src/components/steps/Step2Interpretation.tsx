@@ -26,6 +26,7 @@ export default function Step2Interpretation({
   const [refining, setRefining] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
+  const [rungesExpanded, setRungesExpanded] = useState(false);
 
   const rungs = session.rungs ?? [];
   const clarifications = session.clarifications ?? [];
@@ -138,64 +139,79 @@ export default function Step2Interpretation({
           </div>
         )}
 
-        {/* ── ラング一覧 ── */}
-        <div className="space-y-3">
-          {rungs.map((rung) => (
-            <div key={rung.id} className="border border-gray-100 rounded-xl p-3 space-y-2 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  RUNG {rung.number}
-                </span>
-                <button
-                  onClick={() => onPreviewPage(rung.pageNumber)}
-                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800
-                    hover:bg-blue-50 rounded-md px-2 py-0.5 transition-colors"
-                >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  p.{rung.pageNumber}
-                </button>
-              </div>
+        {/* ── ラング一覧（折りたたみ） ── */}
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <button
+            onClick={() => setRungesExpanded((v) => !v)}
+            className="flex items-center justify-between w-full px-4 py-2.5 bg-gray-50
+              hover:bg-gray-100 transition-colors text-left"
+          >
+            <span className="text-sm font-medium text-gray-600">
+              ラング詳細 ({rungs.length} 件)
+            </span>
+            <span className="text-gray-400 text-xs">{rungesExpanded ? "▲ 閉じる" : "▼ 展開"}</span>
+          </button>
 
-              {rung.warning && (
-                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  <span className="text-amber-500 flex-shrink-0 mt-0.5">⚠</span>
-                  <p className="text-xs text-amber-800">{rung.warning}</p>
+          {rungesExpanded && (
+            <div className="divide-y divide-gray-100">
+              {rungs.map((rung) => (
+                <div key={rung.id} className="p-3 space-y-2 bg-white">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                      RUNG {rung.number}
+                    </span>
+                    <button
+                      onClick={() => onPreviewPage(rung.pageNumber)}
+                      className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800
+                        hover:bg-blue-50 rounded-md px-2 py-0.5 transition-colors"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      p.{rung.pageNumber}
+                    </button>
+                  </div>
+
+                  {rung.warning && (
+                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      <span className="text-amber-500 flex-shrink-0 mt-0.5">⚠</span>
+                      <p className="text-xs text-amber-800">{rung.warning}</p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
+                    <span className="text-gray-500 pt-1.5 font-medium">入力</span>
+                    <input
+                      value={rung.inputs}
+                      onChange={(e) => updateRung(rung.id, "inputs", e.target.value)}
+                      disabled={isComplete}
+                      className="border border-gray-200 rounded-lg px-2 py-1.5 bg-white font-mono text-xs
+                        focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500"
+                    />
+                    <span className="text-gray-500 pt-1.5 font-medium">出力</span>
+                    <input
+                      value={rung.output}
+                      onChange={(e) => updateRung(rung.id, "output", e.target.value)}
+                      disabled={isComplete}
+                      className="border border-gray-200 rounded-lg px-2 py-1.5 bg-white font-mono text-xs
+                        focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500"
+                    />
+                    <span className="text-gray-500 pt-1.5 font-medium">メモ</span>
+                    <input
+                      value={rung.comment}
+                      onChange={(e) => updateRung(rung.id, "comment", e.target.value)}
+                      disabled={isComplete}
+                      className="border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-xs
+                        focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500"
+                    />
+                  </div>
                 </div>
-              )}
-
-              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
-                <span className="text-gray-500 pt-1.5 font-medium">入力</span>
-                <input
-                  value={rung.inputs}
-                  onChange={(e) => updateRung(rung.id, "inputs", e.target.value)}
-                  disabled={isComplete}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 bg-white font-mono text-xs
-                    focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500"
-                />
-                <span className="text-gray-500 pt-1.5 font-medium">出力</span>
-                <input
-                  value={rung.output}
-                  onChange={(e) => updateRung(rung.id, "output", e.target.value)}
-                  disabled={isComplete}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 bg-white font-mono text-xs
-                    focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500"
-                />
-                <span className="text-gray-500 pt-1.5 font-medium">メモ</span>
-                <input
-                  value={rung.comment}
-                  onChange={(e) => updateRung(rung.id, "comment", e.target.value)}
-                  disabled={isComplete}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-xs
-                    focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-500"
-                />
-              </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
 
         {error && (

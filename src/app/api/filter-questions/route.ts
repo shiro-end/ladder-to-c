@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import type { Rung, ClarificationQuestion } from "@/types/session";
+import type { ClarificationQuestion } from "@/types/session";
 
 export const maxDuration = 60;
 
@@ -8,12 +8,11 @@ export async function POST(req: NextRequest) {
   let clarifications: ClarificationQuestion[] = [];
   try {
     const body = (await req.json()) as {
-      rungs: Rung[];
       clarifications: ClarificationQuestion[];
       manufacturer: string;
     };
-    const { rungs, manufacturer } = body;
     clarifications = body.clarifications;
+    const { manufacturer } = body;
 
     if (clarifications.length === 0) {
       return NextResponse.json({ clarifications: [] });
@@ -22,31 +21,33 @@ export async function POST(req: NextRequest) {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const manufacturerName = manufacturer === "keyence" ? "キーエンス" : "三菱電機";
 
-    const rungText = rungs
-      .map((r) => `RUNG ${r.number} (p.${r.pageNumber}): 入力=${r.inputs} 出力=${r.output} コメント=${r.comment}`)
-      .join("\n");
-
     const qText = clarifications
       .map((c, i) => `[${i}] ${c.question}\n背景: ${c.context}`)
       .join("\n\n");
 
     const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-sonnet-4-6",
       max_tokens: 512,
       messages: [{
         role: "user",
         content: `${manufacturerName}PLCラダー図の全ページ解析が完了しました。
-以下の確認事項のうち、全ページのラング解釈から答えが明らかに推測できるものを除外し、
-まだ不明な質問のインデックス（0始まり）だけをJSON配列で返してください。
-判断が難しい場合は残してください。JSONのみ返してください。
+以下の確認事項を整理し、重要度順に最大15件に絞ってください。
 
-【ラング解釈（全ページ）】
-${rungText}
+【残す基準】
+- 設備・運用担当者にしか答えられない情報（通信仕様・物理デバイス種別・安全要件の意図など）
+- C言語変換の品質に直接影響するもの
+
+【除外・統合する基準】
+- ラダー図の記述から推測できるもの
+- C変換の品質に影響しないもの
+- 類似・重複している質問（最も重要な1件に統合）
+
+迷ったら除外してください。残すインデックス（0始まり）をJSONのみで返してください。
 
 【確認事項】
 ${qText}
 
-{"keep": [0, 1]}`,
+{"keep": [0, 2, 5]}`,
       }],
     });
 
