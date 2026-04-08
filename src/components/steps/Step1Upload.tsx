@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, ChangeEvent, DragEvent } from "react";
 import StepCard from "@/components/StepCard";
 import type { Session, Manufacturer, Rung, ClarificationQuestion, Project } from "@/types/session";
-import { MODELS, type ModelId } from "@/lib/models";
+import { MODELS, DEFAULT_MODEL, type ModelId } from "@/lib/models";
+import ModelSelector from "@/components/ModelSelector";
 import { createProject } from "@/lib/db";
 
 const BATCH_SIZE = 5;
@@ -63,7 +64,7 @@ export default function Step1Upload({
   // Upload phase
   const [file, setFile] = useState<File | null>(null);
   const [manufacturer, setManufacturer] = useState<Manufacturer>(session?.manufacturer ?? "keyence");
-  const [model, setModel] = useState<ModelId>("claude-opus-4-6");
+  const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [projectId, setProjectId] = useState<string | null>(session?.projectId ?? null);
   const [newProjectName, setNewProjectName] = useState("");
   const [showNewProject, setShowNewProject] = useState(false);
@@ -355,19 +356,11 @@ export default function Step1Upload({
             </div>
 
             {/* ── モデル選択（常時表示） ── */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">モデルを選ぶ</label>
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                {MODELS.map((m) => (
-                  <label key={m.id} className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="model" value={m.id}
-                      checked={model === m.id} onChange={() => setModel(m.id)}
-                      className="accent-blue-600" />
-                    <span className="text-sm text-gray-700">{m.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+            <ModelSelector
+              selectedModel={model}
+              onChange={(id) => setModel(id as ModelId)}
+              radioName="model-step1"
+            />
 
             {phase === "batch" ? (
           /* ── バッチ処理フェーズ ── */

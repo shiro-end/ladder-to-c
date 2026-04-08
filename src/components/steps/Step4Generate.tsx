@@ -3,7 +3,8 @@
 import { useState } from "react";
 import StepCard from "@/components/StepCard";
 import type { Session, Rung, ConversionEntry } from "@/types/session";
-import { MODELS, getModelLabel } from "@/lib/models";
+import { DEFAULT_MODEL } from "@/lib/models";
+import ModelSelector from "@/components/ModelSelector";
 
 interface Props {
   session: Session;
@@ -103,7 +104,7 @@ export default function Step4Generate({
 }: Props) {
   const [tab, setTab] = useState<"code" | "doc">("code");
   const [selectedModel, setSelectedModel] = useState<string>(
-    session.model ?? "claude-sonnet-4-6"
+    session.model ?? DEFAULT_MODEL
   );
 
   // フェーズ1: Cコード バッチ生成
@@ -268,34 +269,15 @@ export default function Step4Generate({
       {!isPending && (
         <div className="flex flex-col h-full">
 
-          {/* ── モデル選択（コード未生成時のみ） ── */}
-          {!hasCCode && (
-            <div className="px-4 pt-4 pb-2">
-              <p className="text-xs font-medium text-gray-500 mb-1">コード生成に使うモデル</p>
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                {MODELS.map((m) => (
-                  <label key={m.id} className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="model-step4"
-                      value={m.id}
-                      checked={selectedModel === m.id}
-                      onChange={() => setSelectedModel(m.id)}
-                      className="accent-blue-600"
-                    />
-                    <span className="text-sm text-gray-700">{m.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-          {hasCCode && (
-            <div className="px-4 pt-3 pb-1">
-              <p className="text-xs text-blue-600 font-medium">
-                使用モデル: {getModelLabel(selectedModel)}
-              </p>
-            </div>
-          )}
+          {/* ── モデル選択 ── */}
+          <div className="px-4 pt-4 pb-2">
+            <ModelSelector
+              selectedModel={selectedModel}
+              onChange={setSelectedModel}
+              radioName="model-step4"
+              readOnly={hasCCode}
+            />
+          </div>
 
           {/* ── フェーズ1開始ボタン ── */}
           {!hasCCode && codePhase === "idle" && (

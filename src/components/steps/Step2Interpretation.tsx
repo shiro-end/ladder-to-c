@@ -3,7 +3,8 @@
 import { useState, useCallback } from "react";
 import StepCard from "@/components/StepCard";
 import type { Session, Rung, ConversionEntry, ClarificationQuestion } from "@/types/session";
-import { MODELS, getModelLabel } from "@/lib/models";
+import { DEFAULT_MODEL } from "@/lib/models";
+import ModelSelector from "@/components/ModelSelector";
 
 const TABLE_BATCH_SIZE = 60;
 
@@ -54,7 +55,7 @@ export default function Step2Interpretation({
 }: Props) {
   const [error, setError] = useState("");
   const [rungesExpanded, setRungesExpanded] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string>(session.model ?? "claude-opus-4-6");
+  const [selectedModel, setSelectedModel] = useState<string>(session.model ?? DEFAULT_MODEL);
 
   // generate-table バッチ状態
   const [tableBatches, setTableBatches] = useState<TableBatch[]>([]);
@@ -188,25 +189,12 @@ export default function Step2Interpretation({
       <div className="p-4 space-y-4">
 
         {/* ── モデル選択 ── */}
-        {isComplete ? (
-          <p className="text-xs text-blue-600 font-medium">
-            使用モデル: {getModelLabel(selectedModel)}
-          </p>
-        ) : (
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-500">変換表生成に使うモデル</p>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {MODELS.map((m) => (
-                <label key={m.id} className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="radio" name="model-step2" value={m.id}
-                    checked={selectedModel === m.id} onChange={() => setSelectedModel(m.id)}
-                    className="accent-blue-600" />
-                  <span className="text-sm text-gray-700">{m.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
+        <ModelSelector
+          selectedModel={selectedModel}
+          onChange={setSelectedModel}
+          radioName="model-step2"
+          readOnly={isComplete}
+        />
 
         {/* ── 確認事項セクション ── */}
         {hasClarifications && (
