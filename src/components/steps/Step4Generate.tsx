@@ -179,6 +179,10 @@ export default function Step4Generate({
   }
 
   async function runAllCodeBatches() {
+    if (
+      session.cCode &&
+      !confirm("過去に生成したCコードを上書きします。よろしいですか？")
+    ) return;
     setIsRunningCode(true);
     setError("");
     onModelChange?.(selectedModel);
@@ -215,6 +219,10 @@ export default function Step4Generate({
 
   // ── フェーズ2 ──────────────────────────────────────────
   async function handleGenerateDoc() {
+    if (
+      session.interpretationDoc &&
+      !confirm("過去に生成した解釈ドキュメントを上書きします。よろしいですか？")
+    ) return;
     setIsRunningDoc(true);
     setError("");
     try {
@@ -264,10 +272,8 @@ export default function Step4Generate({
       width="w-[520px]"
       isFocused={isFocused}
       onToggleFocus={onToggleFocus}
-      collapsedSummary={<p className="text-xs">変換表確定後に生成されます</p>}
     >
-      {!isPending && (
-        <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full">
 
           {/* ── モデル選択 ── */}
           <div className="px-4 pt-4 pb-2">
@@ -430,7 +436,6 @@ export default function Step4Generate({
             </>
           )}
         </div>
-      )}
     </StepCard>
   );
 }

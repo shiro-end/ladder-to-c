@@ -142,6 +142,10 @@ export default function Step2Interpretation({
   }
 
   async function runAllTableBatches() {
+    if (
+      session.conversionTable?.length &&
+      !confirm("過去に生成した変換表を上書きします。よろしいですか？")
+    ) return;
     const batches = buildTableBatches(rungs);
     setTableBatches(batches);
     setAccEntries([]);
@@ -184,7 +188,6 @@ export default function Step2Interpretation({
       isFocused={isFocused}
       onToggleFocus={onToggleFocus}
       onEdit={onEdit}
-      collapsedSummary={<p className="text-xs">{rungs.length} ラング解析済み</p>}
     >
       <div className="p-4 space-y-4">
 

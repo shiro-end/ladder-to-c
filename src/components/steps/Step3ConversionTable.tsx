@@ -49,13 +49,6 @@ export default function Step3ConversionTable({
       isFocused={isFocused}
       onToggleFocus={onToggleFocus}
       onEdit={onEdit}
-      collapsedSummary={
-        session.activeStep < 3 ? (
-          <p className="text-xs">ラダー図解釈後に生成されます</p>
-        ) : (
-          <p className="text-xs">{table.length} デバイス対応済み</p>
-        )
-      }
     >
       {/* ── カラムヘッダー（sticky） ── */}
       <div className="sticky top-0 z-10 bg-white border-y border-gray-100 px-4 py-2">

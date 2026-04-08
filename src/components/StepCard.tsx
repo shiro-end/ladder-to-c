@@ -11,7 +11,6 @@ interface StepCardProps {
   onToggleFocus: () => void;
   onEdit?: () => void;
   children: ReactNode;
-  collapsedSummary?: ReactNode;
 }
 
 const statusStyles = {
@@ -26,10 +25,6 @@ const statusBadge = {
   complete: <span className="text-xs text-green-600 font-semibold">✓ 完了</span>,
 };
 
-/**
- * スクロール可能な div に native wheel リスナーを付けて
- * react-zoom-pan-pinch のズームハンドラへの伝播を阻止する
- */
 function useBlockCanvasZoom(ref: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const el = ref.current;
@@ -52,7 +47,6 @@ export default function StepCard({
   onToggleFocus,
   onEdit,
   children,
-  collapsedSummary,
 }: StepCardProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   useBlockCanvasZoom(scrollRef);
@@ -95,7 +89,9 @@ export default function StepCard({
 
   return (
     <div
-      className={`flex flex-col rounded-2xl border-2 transition-all duration-200 ${statusStyles[status]} ${width}`}
+      className={`flex flex-col rounded-2xl border-2 transition-all duration-200
+        ${statusStyles[status]} ${width}
+        ${status === "active" ? "opacity-100" : "opacity-50"}`}
       style={{ maxHeight: "calc((100vh - 80px) * 2)", overflow: "hidden" }}
     >
       {/* カードヘッダー */}
@@ -132,14 +128,10 @@ export default function StepCard({
         </div>
       </div>
 
-      {/* カードコンテンツ */}
-      {status === "pending" ? (
-        <div className="px-4 py-6 text-sm text-gray-400 text-center">{collapsedSummary}</div>
-      ) : (
-        <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
-          {children}
-        </div>
-      )}
+      {/* カードコンテンツ — 常に表示 */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
+        {children}
+      </div>
     </div>
   );
 }

@@ -246,6 +246,10 @@ export default function Step1Upload({
 
   async function handlePdfParse() {
     if (!file) return;
+    if (
+      session?.rungs?.length &&
+      !confirm("過去に解析した内容を上書きします。よろしいですか？")
+    ) return;
     setParseError("");
     setIsParsing(true);
 
@@ -319,11 +323,6 @@ export default function Step1Upload({
       isFocused={isFocused}
       onToggleFocus={onToggleFocus}
       onEdit={onEdit}
-      collapsedSummary={
-        <p className="text-xs">
-          {session?.pdfName} / {session?.manufacturer === "keyence" ? "キーエンス" : "三菱電機"} / {session?.pageCount}p
-        </p>
-      }
     >
       <div className="p-4 space-y-4">
         {isComplete ? (
