@@ -113,6 +113,10 @@ JSONのみで返してください（説明文不要）：
     return NextResponse.json({ rungs, clarifications });
   } catch (error) {
     const message = error instanceof Error ? error.message : "解析エラー";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const isRateLimit =
+      message.includes("429") ||
+      message.toLowerCase().includes("rate limit") ||
+      message.toLowerCase().includes("rate_limit");
+    return NextResponse.json({ error: message }, { status: isRateLimit ? 429 : 500 });
   }
 }

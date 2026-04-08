@@ -33,6 +33,17 @@ interface Progress {
   pageEnd: number;
 }
 
+interface RetryInfo {
+  seconds: number;
+  batchNum: number;
+}
+
+function parseRetryAfter(errorMessage: string): number {
+  const match = errorMessage.match(/try again in ([\d.]+)s/i);
+  if (match) return Math.ceil(parseFloat(match[1])) + 1;
+  return 62;
+}
+
 export default function Step1Upload({
   session, projects, isFocused, onToggleFocus, onComplete, onProjectsChange,
 }: Props) {
@@ -44,6 +55,7 @@ export default function Step1Upload({
   const [showNewProject, setShowNewProject] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
+  const [retryInfo, setRetryInfo] = useState<RetryInfo | null>(null);
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -108,31 +120,57 @@ export default function Step1Upload({
 
       setProgress({ phase: "interpreting", current: batch + 1, total: totalBatches, pageStart, pageEnd });
 
-      try {
-        const res = await fetch("/api/interpret", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            pages: batchPages,
-            previousRungs: accRungs,
-            manufacturer,
-            model,
-            batchInfo: { current: batch + 1, total: totalBatches, pageStart, pageEnd },
-          }),
-        });
-        const data = await res.json() as { rungs?: Rung[]; clarifications?: ClarificationQuestion[]; error?: string };
-        if (!res.ok) throw new Error(data.error ?? `バッチ${batch + 1}の解析失敗`);
-        accRungs = [...accRungs, ...(data.rungs ?? [])];
-        for (const q of data.clarifications ?? []) {
-          const isDup = accClarifications.some(
-            (c) => c.question.trim().slice(0, 20) === q.question.trim().slice(0, 20)
-          );
-          if (!isDup) accClarifications.push(q);
+      let retries = 0;
+      const MAX_RETRIES = 5;
+
+      while (true) {
+        try {
+          const res = await fetch("/api/interpret", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pages: batchPages,
+              previousRungs: accRungs,
+              manufacturer,
+              model,
+              batchInfo: { current: batch + 1, total: totalBatches, pageStart, pageEnd },
+            }),
+          });
+          const data = await res.json() as { rungs?: Rung[]; clarifications?: ClarificationQuestion[]; error?: string };
+
+          if (res.status === 429) {
+            if (retries >= MAX_RETRIES) {
+              setError("レート制限の上限回数に達しました。時間を置いて再試行してください。");
+              setProgress(null);
+              setRetryInfo(null);
+              return;
+            }
+            retries++;
+            const waitSec = parseRetryAfter(data.error ?? "");
+            for (let i = waitSec; i > 0; i--) {
+              setRetryInfo({ seconds: i, batchNum: batch + 1 });
+              await new Promise((r) => setTimeout(r, 1000));
+            }
+            setRetryInfo(null);
+            continue;
+          }
+
+          if (!res.ok) throw new Error(data.error ?? `バッチ${batch + 1}の解析失敗`);
+
+          accRungs = [...accRungs, ...(data.rungs ?? [])];
+          for (const q of data.clarifications ?? []) {
+            const isDup = accClarifications.some(
+              (c) => c.question.trim().slice(0, 20) === q.question.trim().slice(0, 20)
+            );
+            if (!isDup) accClarifications.push(q);
+          }
+          break;
+        } catch (e) {
+          setError(e instanceof Error ? e.message : `バッチ${batch + 1}でエラー`);
+          setProgress(null);
+          setRetryInfo(null);
+          return;
         }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : `バッチ${batch + 1}でエラー`);
-        setProgress(null);
-        return;
       }
     }
 
@@ -283,7 +321,11 @@ export default function Step1Upload({
             {isRunning && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-gray-600">
-                  {progress.phase === "parsing" ? (
+                  {retryInfo ? (
+                    <span className="text-amber-600">
+                      バッチ {retryInfo.batchNum} レート制限待機中... {retryInfo.seconds}秒
+                    </span>
+                  ) : progress.phase === "parsing" ? (
                     <span>PDFを解析中...</span>
                   ) : (
                     <span>
@@ -299,7 +341,7 @@ export default function Step1Upload({
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-1.5">
                   <div
-                    className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                    className={`h-1.5 rounded-full transition-all duration-300 ${retryInfo ? "bg-amber-400" : "bg-blue-500"}`}
                     style={{
                       width: progress.phase === "parsing"
                         ? "5%"
