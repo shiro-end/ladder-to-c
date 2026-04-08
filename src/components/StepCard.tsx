@@ -9,6 +9,7 @@ interface StepCardProps {
   width: string;
   isFocused: boolean;
   onToggleFocus: () => void;
+  onEdit?: () => void;
   children: ReactNode;
   collapsedSummary?: ReactNode;
 }
@@ -49,6 +50,7 @@ export default function StepCard({
   width,
   isFocused,
   onToggleFocus,
+  onEdit,
   children,
   collapsedSummary,
 }: StepCardProps) {
@@ -68,12 +70,23 @@ export default function StepCard({
             <span className="font-semibold text-gray-800">{title}</span>
             {statusBadge[status]}
           </div>
-          <button
-            onClick={onToggleFocus}
-            className="text-sm text-gray-500 hover:text-gray-800 px-3 py-1 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            ← 戻る
-          </button>
+          <div className="flex items-center gap-2">
+            {status === "complete" && onEdit && (
+              <button
+                onClick={onEdit}
+                title="編集に戻す"
+                className="text-xs text-amber-600 hover:text-amber-800 hover:bg-amber-50 px-2 py-1 rounded-lg transition-colors"
+              >
+                ✎ 編集に戻す
+              </button>
+            )}
+            <button
+              onClick={onToggleFocus}
+              className="text-sm text-gray-500 hover:text-gray-800 px-3 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              ← 戻る
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto p-5">{children}</div>
       </div>
@@ -95,6 +108,15 @@ export default function StepCard({
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 ml-2">
           {statusBadge[status]}
+          {status === "complete" && onEdit && (
+            <button
+              onClick={onEdit}
+              title="編集に戻す"
+              className="text-xs text-amber-600 hover:text-amber-800 hover:bg-amber-50 px-2 py-1 rounded-lg transition-colors"
+            >
+              ✎ 編集に戻す
+            </button>
+          )}
           {isExpanded && (
             <button
               onClick={onToggleFocus}

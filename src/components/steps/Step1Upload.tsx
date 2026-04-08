@@ -34,6 +34,7 @@ interface Props {
   onComplete: (updates: Partial<Session> & { id: string }, pageUrls: string[]) => void;
   onSessionUpdate: (updates: Partial<Session>) => void;
   onProjectsChange: () => void;
+  onEdit?: () => void;
 }
 
 function buildBatches(pageCount: number, existingRungs: Rung[]): Batch[] {
@@ -65,7 +66,7 @@ async function fetchPageAsBase64(url: string): Promise<string> {
 }
 
 export default function Step1Upload({
-  session, projects, isFocused, onToggleFocus, onComplete, onSessionUpdate, onProjectsChange,
+  session, projects, isFocused, onToggleFocus, onComplete, onSessionUpdate, onProjectsChange, onEdit,
 }: Props) {
   // Upload phase
   const [file, setFile] = useState<File | null>(null);
@@ -86,6 +87,7 @@ export default function Step1Upload({
   const [accRungs, setAccRungs] = useState<Rung[]>([]);
   const [accClarifications, setAccClarifications] = useState<ClarificationQuestion[]>([]);
   const [isRunningAll, setIsRunningAll] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
 
   // Track which session we initialized for (to avoid re-init on fresh upload)
   const freshUploadSessionId = useRef<string | null>(null);
@@ -105,7 +107,7 @@ export default function Step1Upload({
     } else if (session.activeStep > 1) {
       setPhase("upload");
     }
-  }, [session?.id]);
+  }, [session?.id, session?.activeStep]);
 
   function updateBatch(index: number, updates: Partial<Batch>) {
     setBatches((prev) => prev.map((b, i) => (i === index ? { ...b, ...updates } : b)));
@@ -224,6 +226,32 @@ export default function Step1Upload({
     setIsRunningAll(false);
   }
 
+  async function handleGoToStep2() {
+    setIsRefining(true);
+    try {
+      const res = await fetch("/api/filter-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rungs: accRungs,
+          clarifications: accClarifications,
+          manufacturer: session?.manufacturer ?? manufacturer,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { clarifications?: ClarificationQuestion[] };
+        const refined = data.clarifications ?? accClarifications;
+        onSessionUpdate({ clarifications: refined, activeStep: 2 });
+      } else {
+        onSessionUpdate({ activeStep: 2 });
+      }
+    } catch {
+      onSessionUpdate({ activeStep: 2 });
+    } finally {
+      setIsRefining(false);
+    }
+  }
+
   async function handlePdfParse() {
     if (!file) return;
     setParseError("");
@@ -297,6 +325,7 @@ export default function Step1Upload({
       width={phase === "batch" ? "w-80" : "w-72"}
       isFocused={isFocused}
       onToggleFocus={onToggleFocus}
+      onEdit={onEdit}
       collapsedSummary={
         <p className="text-xs">
           {session?.pdfName} / {session?.manufacturer === "keyence" ? "キーエンス" : "三菱電機"} / {session?.pageCount}p
@@ -402,12 +431,12 @@ export default function Step1Upload({
 
             {/* ステップ2を生成 */}
             <button
-              onClick={() => onSessionUpdate({ activeStep: 2 })}
-              disabled={!allDone}
+              onClick={handleGoToStep2}
+              disabled={!allDone || isRefining}
               className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl
                 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              ステップ2を生成 →
+              {isRefining ? "質問を精査中..." : "ステップ2を生成 →"}
             </button>
           </>
         ) : (

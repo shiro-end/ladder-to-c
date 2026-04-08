@@ -10,6 +10,7 @@ interface Props {
   onToggleFocus: () => void;
   onUpdate: (table: ConversionEntry[]) => void;
   onComplete: (cCode: string, interpretationDoc: string) => void;
+  onEdit?: () => void;
 }
 
 const DATA_TYPES = ["bool", "uint16_t", "uint32_t", "int16_t", "int32_t", "float"];
@@ -20,6 +21,7 @@ export default function Step3ConversionTable({
   onToggleFocus,
   onUpdate,
   onComplete,
+  onEdit,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -76,6 +78,7 @@ export default function Step3ConversionTable({
       width="w-[420px]"
       isFocused={isFocused}
       onToggleFocus={onToggleFocus}
+      onEdit={onEdit}
       collapsedSummary={
         session.activeStep < 3
           ? <p className="text-xs">ラダー図解釈後に生成されます</p>

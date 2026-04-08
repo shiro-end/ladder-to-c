@@ -93,6 +93,7 @@ export default function Canvas({ session, projects, onSessionUpdate, onSessionCr
                 onComplete={(updates, pages) => onSessionCreate(updates, pages)}
                 onSessionUpdate={onSessionUpdate}
                 onProjectsChange={onProjectsChange}
+                onEdit={session ? () => onSessionUpdate({ activeStep: 1 }) : undefined}
               />
 
               {/* Step 2 */}
@@ -106,6 +107,7 @@ export default function Canvas({ session, projects, onSessionUpdate, onSessionCr
                   onComplete={(conversionTable: ConversionEntry[]) =>
                     onSessionUpdate({ conversionTable, activeStep: 3 })
                   }
+                  onEdit={() => onSessionUpdate({ activeStep: 2 })}
                 />
               ) : (
                 <MockInterpretationCard />
@@ -121,6 +123,7 @@ export default function Canvas({ session, projects, onSessionUpdate, onSessionCr
                   onComplete={(cCode: string, interpretationDoc: string) =>
                     onSessionUpdate({ cCode, interpretationDoc, activeStep: 4 })
                   }
+                  onEdit={() => onSessionUpdate({ activeStep: 3 })}
                 />
               ) : (
                 <MockConversionTableCard />

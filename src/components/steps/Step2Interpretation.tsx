@@ -11,6 +11,7 @@ interface Props {
   onPreviewPage: (page: number) => void;
   onUpdate: (rungs: Rung[], clarifications: ClarificationQuestion[]) => void;
   onComplete: (conversionTable: ConversionEntry[]) => void;
+  onEdit?: () => void;
 }
 
 export default function Step2Interpretation({
@@ -20,6 +21,7 @@ export default function Step2Interpretation({
   onPreviewPage,
   onUpdate,
   onComplete,
+  onEdit,
 }: Props) {
   const [refining, setRefining] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -87,6 +89,7 @@ export default function Step2Interpretation({
       width="w-[480px]"
       isFocused={isFocused}
       onToggleFocus={onToggleFocus}
+      onEdit={onEdit}
       collapsedSummary={<p className="text-xs">{rungs.length} ラング解析済み</p>}
     >
       <div className="p-4 space-y-4">
