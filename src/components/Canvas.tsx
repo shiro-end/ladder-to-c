@@ -91,6 +91,7 @@ export default function Canvas({ session, projects, onSessionUpdate, onSessionCr
                 isFocused={focusedStep === 1}
                 onToggleFocus={() => toggleFocus(1)}
                 onComplete={(updates, pages) => onSessionCreate(updates, pages)}
+                onSessionUpdate={onSessionUpdate}
                 onProjectsChange={onProjectsChange}
               />
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { jsonrepair } from "jsonrepair";
 import type { Rung, ClarificationQuestion } from "@/types/session";
 
 export const maxDuration = 120;
@@ -62,18 +63,16 @@ JSONのみで返してください（説明文不要）：
       const response = await openai.chat.completions.create({
         model,
         max_tokens: 8192,
-        messages: [
-          {
-            role: "user",
-            content: [
-              ...pages.map((base64) => ({
-                type: "image_url" as const,
-                image_url: { url: `data:image/png;base64,${base64}` },
-              })),
-              { type: "text" as const, text: promptText },
-            ],
-          },
-        ],
+        messages: [{
+          role: "user",
+          content: [
+            ...pages.map((base64) => ({
+              type: "image_url" as const,
+              image_url: { url: `data:image/png;base64,${base64}` },
+            })),
+            { type: "text" as const, text: promptText },
+          ],
+        }],
       });
       text = response.choices[0]?.message?.content ?? "";
     } else {
@@ -85,12 +84,10 @@ JSONのみで返してください（説明文不要）：
       const response = await anthropic.messages.create({
         model,
         max_tokens: 8192,
-        messages: [
-          {
-            role: "user",
-            content: [...imageContent, { type: "text", text: promptText }],
-          },
-        ],
+        messages: [{
+          role: "user",
+          content: [...imageContent, { type: "text", text: promptText }],
+        }],
       });
       text = response.content.find((b) => b.type === "text")?.text ?? "";
     }
@@ -98,10 +95,21 @@ JSONのみで返してください（説明文不要）：
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("レスポンスのJSON解析に失敗しました");
 
-    const parsed = JSON.parse(match[0]) as {
+    type ParsedResponse = {
       rungs: Omit<Rung, "id">[];
       clarifications: Omit<ClarificationQuestion, "id" | "answer">[];
     };
+
+    let parsed: ParsedResponse;
+    try {
+      parsed = JSON.parse(match[0]) as ParsedResponse;
+    } catch {
+      try {
+        parsed = JSON.parse(jsonrepair(match[0])) as ParsedResponse;
+      } catch {
+        throw new Error("JSONの解析に失敗しました（修復不可）");
+      }
+    }
 
     const rungs: Rung[] = (parsed.rungs ?? []).map((r) => ({ ...r, id: crypto.randomUUID() }));
     const clarifications: ClarificationQuestion[] = (parsed.clarifications ?? []).map((c) => ({
