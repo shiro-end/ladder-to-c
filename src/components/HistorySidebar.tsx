@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSessions, deleteSession, getProjects, deleteProject, updateSessionName } from "@/lib/db";
+import { getSessions, deleteSession, getProjects, deleteProject, updateSessionName, updateProjectName } from "@/lib/db";
 import type { Session, Project } from "@/types/session";
 
 interface Props {
@@ -41,6 +41,11 @@ export default function HistorySidebar({ currentId, onSelect, onNew, onClose }: 
 
   async function handleRename(id: string, name: string) {
     await updateSessionName(id, name);
+    reload();
+  }
+
+  async function handleRenameProject(id: string, name: string) {
+    await updateProjectName(id, name);
     reload();
   }
 
@@ -96,33 +101,14 @@ export default function HistorySidebar({ currentId, onSelect, onNew, onClose }: 
               const isExpanded = expandedProjects.has(project.id);
               return (
                 <div key={project.id}>
-                  <button
-                    onClick={() => toggleProject(project.id)}
-                    className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-colors group"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <svg
-                        className={`w-3 h-3 text-gray-400 flex-shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                      <span className="text-sm font-medium text-gray-700 truncate">
-                        📁 {project.name}
-                      </span>
-                      <span className="text-xs text-gray-400 flex-shrink-0">({projectSessions.length})</span>
-                    </div>
-                    <button
-                      onClick={(e) => handleDeleteProject(e, project.id)}
-                      className="text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </button>
-
+                  <ProjectRow
+                    project={project}
+                    sessionCount={projectSessions.length}
+                    isExpanded={isExpanded}
+                    onToggle={() => toggleProject(project.id)}
+                    onDelete={(e) => handleDeleteProject(e, project.id)}
+                    onRename={(name) => handleRenameProject(project.id, name)}
+                  />
                   {isExpanded && (
                     <div className="pl-5">
                       {projectSessions.length === 0 ? (
@@ -178,6 +164,95 @@ export default function HistorySidebar({ currentId, onSelect, onNew, onClose }: 
             )}
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ProjectRow({
+  project,
+  sessionCount,
+  isExpanded,
+  onToggle,
+  onDelete,
+  onRename,
+}: {
+  project: Project;
+  sessionCount: number;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onDelete: (e: React.MouseEvent) => void;
+  onRename: (name: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(project.name);
+
+  function startEdit(e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditName(project.name);
+    setEditing(true);
+  }
+
+  function commitEdit() {
+    const trimmed = editName.trim();
+    if (trimmed && trimmed !== project.name) onRename(trimmed);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+        <input
+          autoFocus
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitEdit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          className="w-full border border-blue-300 rounded-lg px-2 py-1 text-xs
+            focus:outline-none focus:border-blue-500"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center group">
+      <button
+        onClick={onToggle}
+        className="flex-1 flex items-center gap-2 px-4 py-2 hover:bg-gray-50 transition-colors min-w-0"
+      >
+        <svg
+          className={`w-3 h-3 text-gray-400 flex-shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        <span className="text-sm font-medium text-gray-700 truncate">📁 {project.name}</span>
+        <span className="text-xs text-gray-400 flex-shrink-0">({sessionCount})</span>
+      </button>
+      <div className="flex items-center gap-0.5 pr-3 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+        <button
+          onClick={startEdit}
+          className="text-gray-300 hover:text-blue-400 p-0.5 rounded"
+          title="名前を編集"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </button>
+        <button
+          onClick={onDelete}
+          className="text-gray-300 hover:text-red-400 p-0.5 rounded"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
       </div>
     </div>
   );

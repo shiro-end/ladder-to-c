@@ -31,6 +31,13 @@ export async function deleteProject(id: string): Promise<void> {
   await getSupabaseClient().from("projects").delete().eq("id", id);
 }
 
+export async function updateProjectName(id: string, name: string): Promise<void> {
+  await getSupabaseClient()
+    .from("projects")
+    .update({ name })
+    .eq("id", id);
+}
+
 /* ── Sessions ── */
 
 export async function getSessions(): Promise<Session[]> {
