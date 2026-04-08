@@ -3,9 +3,6 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import type { Rung, ClarificationQuestion } from "@/types/session";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
@@ -61,6 +58,7 @@ JSONのみで返してください（説明文不要）：
     let text = "";
 
     if (model.startsWith("gpt-")) {
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const response = await openai.chat.completions.create({
         model,
         max_tokens: 8192,
@@ -79,6 +77,7 @@ JSONのみで返してください（説明文不要）：
       });
       text = response.choices[0]?.message?.content ?? "";
     } else {
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
       const imageContent: Anthropic.ImageBlockParam[] = pages.map((base64) => ({
         type: "image",
         source: { type: "base64", media_type: "image/png", data: base64 },
