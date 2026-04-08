@@ -89,7 +89,18 @@ export default function Step1Upload({
 
   // Initialize batch phase when loading an existing partial session
   useEffect(() => {
-    if (!session) return;
+    if (!session) {
+      // 新規変換: ローカルステートをリセット
+      setPhase("upload");
+      setFile(null);
+      setBatches([]);
+      setAccRungs([]);
+      setAccClarifications([]);
+      setParsedPages(null);
+      setParseError("");
+      freshUploadSessionId.current = null;
+      return;
+    }
     if (session.id === freshUploadSessionId.current) return; // fresh upload, already set
     if (session.activeStep === 1 && (session.pageCount ?? 0) > 0) {
       setBatches(buildBatches(session.pageCount, session.rungs ?? []));
