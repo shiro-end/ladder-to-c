@@ -23,7 +23,6 @@ export default function Step2Interpretation({
   onComplete,
   onEdit,
 }: Props) {
-  const [refining, setRefining] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [rungesExpanded, setRungesExpanded] = useState(false);
@@ -31,7 +30,6 @@ export default function Step2Interpretation({
   const rungs = session.rungs ?? [];
   const clarifications = session.clarifications ?? [];
   const isComplete = session.activeStep > 2;
-  const hasUnanswered = clarifications.some((c) => !c.answer.trim());
   const hasClarifications = clarifications.length > 0;
 
   function updateAnswer(id: string, answer: string) {
@@ -42,25 +40,6 @@ export default function Step2Interpretation({
   function updateRung(id: string, field: keyof Rung, value: string) {
     const updated = rungs.map((r) => (r.id === id ? { ...r, [field]: value } : r));
     onUpdate(updated, clarifications);
-  }
-
-  async function handleRefine() {
-    setRefining(true);
-    setError("");
-    try {
-      const res = await fetch("/api/refine", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rungs, clarifications, manufacturer: session.manufacturer }),
-      });
-      const data = await res.json() as { rungs?: Rung[]; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "更新失敗");
-      onUpdate(data.rungs ?? rungs, clarifications);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "エラーが発生しました");
-    } finally {
-      setRefining(false);
-    }
   }
 
   async function handleGenerateTable() {
@@ -124,18 +103,6 @@ export default function Step2Interpretation({
                 </div>
               ))}
             </div>
-            {!isComplete && (
-              <div className="px-3 py-2.5 bg-amber-50 border-t border-amber-200">
-                <button
-                  onClick={handleRefine}
-                  disabled={refining || hasUnanswered}
-                  className="w-full py-2 bg-amber-500 text-white text-xs font-semibold rounded-lg
-                    hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {refining ? "解釈を更新中..." : hasUnanswered ? "すべて回答してから更新" : "回答を反映して解釈を更新 ↺"}
-                </button>
-              </div>
-            )}
           </div>
         )}
 

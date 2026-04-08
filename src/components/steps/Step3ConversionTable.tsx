@@ -58,6 +58,7 @@ export default function Step3ConversionTable({
           rungs: session.rungs,
           conversionTable: table,
           manufacturer: session.manufacturer,
+          clarifications: session.clarifications,
         }),
       });
       const data = await res.json() as { cCode?: string; interpretationDoc?: string; error?: string };
