@@ -281,7 +281,6 @@ export default function Step4Generate({
               selectedModel={selectedModel}
               onChange={setSelectedModel}
               radioName="model-step4"
-              readOnly={hasCCode}
             />
           </div>
 

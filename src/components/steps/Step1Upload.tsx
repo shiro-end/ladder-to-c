@@ -336,20 +336,8 @@ export default function Step1Upload({
       onEdit={onEdit}
     >
       <div className="p-4 space-y-4">
-        {isComplete ? (
-          /* ── 完了サマリー ── */
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-gray-700 break-all">{session?.pdfName}</p>
-            <p className="text-xs text-gray-500">
-              {session?.manufacturer === "keyence" ? "キーエンス" : "三菱電機"} / {session?.pageCount} ページ
-            </p>
-            <p className="text-xs text-blue-600 font-medium">
-              {MODELS.find((m) => m.id === session?.model)?.label ?? session?.model ?? DEFAULT_MODEL}
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* ── メーカー選択（常時表示） ── */}
+        <>
+            {/* ── メーカー選択 ── */}
             <div className="flex gap-4">
               {(["mitsubishi", "keyence"] as Manufacturer[]).map((m) => (
                 <label key={m} className="flex items-center gap-1.5 cursor-pointer">
@@ -553,8 +541,7 @@ export default function Step1Upload({
             </button>
           </>
         )}
-          </>
-        )}
+        </>
       </div>
     </StepCard>
   );

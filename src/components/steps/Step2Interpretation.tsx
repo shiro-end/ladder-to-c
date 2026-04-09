@@ -196,7 +196,6 @@ export default function Step2Interpretation({
           selectedModel={selectedModel}
           onChange={setSelectedModel}
           radioName="model-step2"
-          readOnly={isComplete || (session.conversionTable?.length ?? 0) > 0}
         />
 
         {/* ── 確認事項セクション ── */}
