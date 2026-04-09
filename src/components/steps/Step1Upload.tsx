@@ -343,11 +343,9 @@ export default function Step1Upload({
             <p className="text-xs text-gray-500">
               {session?.manufacturer === "keyence" ? "キーエンス" : "三菱電機"} / {session?.pageCount} ページ
             </p>
-            {session?.model && (
-              <p className="text-xs text-blue-600 font-medium">
-                {MODELS.find((m) => m.id === session.model)?.label ?? session.model}
-              </p>
-            )}
+            <p className="text-xs text-blue-600 font-medium">
+              {MODELS.find((m) => m.id === session?.model)?.label ?? session?.model ?? DEFAULT_MODEL}
+            </p>
           </div>
         ) : (
           <>
