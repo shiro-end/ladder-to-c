@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { jsonrepair } from "jsonrepair";
 import type { Rung, ConversionEntry } from "@/types/session";
@@ -7,11 +6,11 @@ import type { Rung, ConversionEntry } from "@/types/session";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   try {
-    const { rungs, manufacturer, model = "claude-opus-4-6" } = (await req.json()) as {
+    const { rungs, manufacturer } = (await req.json()) as {
       rungs: Rung[];
       manufacturer: string;
-      model?: string;
     };
 
     const manufacturerName = manufacturer === "keyence" ? "キーエンス" : "三菱電機";
@@ -30,24 +29,12 @@ ${rungText}
 
 dataTypeは bool / uint16_t / uint32_t / int16_t のいずれか。JSONのみ返してください。`;
 
-    let text = "";
-    if (model.startsWith("gpt-")) {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const res = await openai.chat.completions.create({
-        model,
-        max_tokens: 4096,
-        messages: [{ role: "user", content: prompt }],
-      });
-      text = res.choices[0]?.message?.content ?? "";
-    } else {
-      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-      const res = await anthropic.messages.create({
-        model,
-        max_tokens: 4096,
-        messages: [{ role: "user", content: prompt }],
-      });
-      text = res.content.find((b) => b.type === "text")?.text ?? "";
-    }
+    const res = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 4096,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const text = res.choices[0]?.message?.content ?? "";
 
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("レスポンスのJSON解析に失敗しました");

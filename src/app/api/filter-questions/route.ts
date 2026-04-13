@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import type { ClarificationQuestion } from "@/types/session";
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   let clarifications: ClarificationQuestion[] = [];
   try {
     const body = (await req.json()) as {
@@ -18,15 +19,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ clarifications: [] });
     }
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const manufacturerName = manufacturer === "keyence" ? "キーエンス" : "三菱電機";
 
     const qText = clarifications
       .map((c, i) => `[${i}] ${c.question}\n背景: ${c.context}`)
       .join("\n\n");
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+    const res = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
       max_tokens: 512,
       messages: [{
         role: "user",
@@ -51,7 +51,7 @@ ${qText}
       }],
     });
 
-    const text = response.content.find((b) => b.type === "text")?.text ?? "";
+    const text = res.choices[0]?.message?.content ?? "";
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return NextResponse.json({ clarifications });
 

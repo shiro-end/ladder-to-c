@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import type { ConversionEntry, ClarificationQuestion } from "@/types/session";
 
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   try {
-    const { cCode, conversionTable, clarifications, manufacturer, model = "claude-sonnet-4-6" } =
-      (await req.json()) as {
-        cCode: string;
-        conversionTable: ConversionEntry[];
-        clarifications?: ClarificationQuestion[];
-        manufacturer: string;
-        model?: string;
-      };
+    const { cCode, conversionTable, clarifications, manufacturer } = (await req.json()) as {
+      cCode: string;
+      conversionTable: ConversionEntry[];
+      clarifications?: ClarificationQuestion[];
+      manufacturer: string;
+    };
 
     const manufacturerName = manufacturer === "keyence" ? "キーエンス" : "三菱電機";
 
@@ -52,24 +50,12 @@ ${cCode}
 
 ラングを1件ずつ列挙せず、機能まとまりで説明してください。`;
 
-    let text = "";
-    if (model.startsWith("gpt-")) {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const res = await openai.chat.completions.create({
-        model,
-        max_tokens: 8192,
-        messages: [{ role: "user", content: prompt }],
-      });
-      text = res.choices[0]?.message?.content ?? "";
-    } else {
-      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-      const res = await anthropic.messages.create({
-        model,
-        max_tokens: 8192,
-        messages: [{ role: "user", content: prompt }],
-      });
-      text = res.content.find((b) => b.type === "text")?.text ?? "";
-    }
+    const res = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 8192,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const text = res.choices[0]?.message?.content ?? "";
 
     return NextResponse.json({ interpretationDoc: text });
   } catch (error) {

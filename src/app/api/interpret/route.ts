@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { jsonrepair } from "jsonrepair";
 import type { Rung, ClarificationQuestion } from "@/types/session";
@@ -7,13 +6,13 @@ import type { Rung, ClarificationQuestion } from "@/types/session";
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   try {
-    const { pages, previousRungs, manufacturer, batchInfo, model } = (await req.json()) as {
+    const { pages, previousRungs, manufacturer, batchInfo } = (await req.json()) as {
       pages: string[];
       previousRungs: Rung[];
       manufacturer: string;
       batchInfo: { current: number; total: number; pageStart: number; pageEnd: number };
-      model: string;
     };
 
     const manufacturerName =
@@ -59,41 +58,21 @@ JSONのみで返してください（説明文不要）：
   ラダー図の記述から読み取れること・推測できることは絶対に質問しない。
   前バッチで既出の質問は除外する。該当がなければ空配列でよい。`;
 
-    let text = "";
-
-    if (model.startsWith("gpt-")) {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const response = await openai.chat.completions.create({
-        model,
-        max_tokens: 8192,
-        messages: [{
-          role: "user",
-          content: [
-            ...pages.map((base64) => ({
-              type: "image_url" as const,
-              image_url: { url: `data:image/png;base64,${base64}` },
-            })),
-            { type: "text" as const, text: promptText },
-          ],
-        }],
-      });
-      text = response.choices[0]?.message?.content ?? "";
-    } else {
-      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-      const imageContent: Anthropic.ImageBlockParam[] = pages.map((base64) => ({
-        type: "image",
-        source: { type: "base64", media_type: "image/png", data: base64 },
-      }));
-      const response = await anthropic.messages.create({
-        model,
-        max_tokens: 8192,
-        messages: [{
-          role: "user",
-          content: [...imageContent, { type: "text", text: promptText }],
-        }],
-      });
-      text = response.content.find((b) => b.type === "text")?.text ?? "";
-    }
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 8192,
+      messages: [{
+        role: "user",
+        content: [
+          ...pages.map((base64) => ({
+            type: "image_url" as const,
+            image_url: { url: `data:image/png;base64,${base64}` },
+          })),
+          { type: "text" as const, text: promptText },
+        ],
+      }],
+    });
+    const text = response.choices[0]?.message?.content ?? "";
 
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("レスポンスのJSON解析に失敗しました");

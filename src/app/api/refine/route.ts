@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import type { Rung, ClarificationQuestion } from "@/types/session";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   try {
     const { rungs, clarifications, manufacturer } = (await req.json()) as {
       rungs: Rung[];
@@ -26,13 +25,12 @@ export async function POST(req: NextRequest) {
       .map((c) => `Q: ${c.question}\n背景: ${c.context}\nA: ${c.answer}`)
       .join("\n\n");
 
-    const response = await client.messages.create({
-      model: "claude-opus-4-6",
+    const res = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
       max_tokens: 8192,
-      messages: [
-        {
-          role: "user",
-          content: `${manufacturerName}PLCのラダー図解釈に、以下の確認事項への回答が得られました。
+      messages: [{
+        role: "user",
+        content: `${manufacturerName}PLCのラダー図解釈に、以下の確認事項への回答が得られました。
 回答を踏まえてラング解釈を更新してください。JSONのみ返してください。
 
 【現在のラング解釈】
@@ -56,17 +54,15 @@ inputs・output・number・pageNumber は変更しないでください。
     }
   ]
 }`,
-        },
-      ],
+      }],
     });
 
-    const text = response.content.find((b) => b.type === "text")?.text ?? "";
+    const text = res.choices[0]?.message?.content ?? "";
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("レスポンスのJSON解析に失敗しました");
 
     const parsed = JSON.parse(match[0]) as { rungs: Omit<Rung, "id">[] };
 
-    // 既存の id を保持しながら更新
     const idMap = Object.fromEntries(rungs.map((r) => [r.number, r.id]));
     const updatedRungs: Rung[] = parsed.rungs.map((r) => ({
       ...r,
